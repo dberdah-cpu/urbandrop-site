@@ -460,7 +460,7 @@ async function loadSiteSettings() {
 
     document.querySelectorAll('.hc-veh').forEach(el => {
       const onclick = el.getAttribute('onclick') || '';
-      const match = onclick.match(/hcSelV\(this,'([^']+)',(\d+),([\d.]+)\)/);
+      const match = onclick.match(/hcSelV[(]this,['][^']+['],\d+,[\d.]+[)]/); const parts = match ? onclick.match(/hcSelV[(]this,'([^']+)',(\d+),([\d.]+)[)]/) : null;
       if(match) {
         const veh = match[1];
         if(updates[veh]) {
@@ -1188,7 +1188,7 @@ function showPrice() {
   cmdBtn.style.display='block';
 
   const vn={moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'};
-  const sn={standard:'Standard — dans la journée',express:'Express — dans l\'heure',programme:'Programmé'};
+  const sn={standard:'Standard — dans la journée',express:'Express — dans l’heure',programme:'Programmé'};
   const slot=window.calSelectedSlot?'\n📅 Créneau : '+window.calSelectedSlot:'';
   const waMsg=encodeURIComponent('Bonjour UrbanDrop 👋\n\n📍 Départ : '+dep+'\n🏁 Arrivée : '+arr+'\n📦 Service : '+(sn[svc]||svc)+slot+'\n🚗 '+(vn[hcV]||hcV)+'\n📏 Distance : '+hcDist+' km\n💰 Estimation : '+base+'€ – '+max+'€\n\nJe souhaite commander cette livraison.');
   const waUrl='https://wa.me/33775779593?text='+waMsg;
@@ -1969,7 +1969,7 @@ function renderHistory() {
   const badge = document.getElementById('hist-count-badge');
   if(badge) badge.textContent = hist.length;
   if(!hist.length) {
-    el.innerHTML = '<div class="hist-empty">🚚<br><br>Aucune course pour l\'instant.<br>Votre historique apparaîra ici après votre première commande.</div>';
+    el.innerHTML = "<div class=\"hist-empty\">🚚<br><br>Aucune course pour le moment.<br>Votre historique apparaîtra ici.</div>";
     return;
   }
   el.innerHTML = hist.map((r,i) => `
