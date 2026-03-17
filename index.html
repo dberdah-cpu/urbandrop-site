@@ -429,6 +429,57 @@ window.closeModal = function() {
   document.getElementById('order-modal').classList.remove('open');
   document.body.style.overflow='';
 };
+async function loadSiteSettings() {
+  if(!_sb) return;
+  try {
+    const { data } = await _sb.from('settings').select('*');
+    if(!data || !data.length) return;
+    const s = {};
+    data.forEach(r => s[r.key] = r.value);
+
+    // Mettre à jour le numéro WhatsApp
+    if(s.wa_number) {
+      const waBase = 'https://wa.me/' + s.wa_number;
+      const waText = '?text=Bonjour%2C+je+souhaite+une+livraison+avec+UrbanDrop';
+      document.querySelectorAll('a[href*="wa.me"]').forEach(a => {
+        if(a.href.includes('33775779593')) {
+          a.href = waBase + (a.href.includes('?text=') ? waText : '');
+        }
+      });
+      // Mettre à jour WA_NUMBER pour les WhatsApp dynamiques
+      window.WA_NUMBER_DYN = s.wa_number;
+    }
+
+    // Mettre à jour les prix sur les boutons véhicules
+    const updates = {
+      moto:         { base: s.moto_base,    km: s.moto_km },
+      fourgonnette: { base: s.fourgon_base, km: s.fourgon_km },
+      camionnette:  { base: s.camion_base,  km: s.camion_km },
+      'grand-volume':{ base: s.gv_base,     km: s.gv_km }
+    };
+
+    document.querySelectorAll('.hc-veh').forEach(el => {
+      const onclick = el.getAttribute('onclick') || '';
+      const match = onclick.match(/hcSelV\(this,'([^']+)',(\d+),([\d.]+)\)/);
+      if(match) {
+        const veh = match[1];
+        if(updates[veh]) {
+          const base = parseFloat(updates[veh].base) || parseFloat(match[2]);
+          const km   = parseFloat(updates[veh].km)   || parseFloat(match[3]);
+          el.setAttribute('onclick', "hcSelV(this,'"+veh+"',"+base+","+km+")");
+          // Mettre à jour le badge prix affiché
+          const vp = el.querySelector('.vp');
+          if(vp) vp.textContent = 'dès ' + base + '€';
+        }
+      }
+    });
+
+    // Express pct
+    if(s.express_pct) window.EXPRESS_PCT = parseFloat(s.express_pct)/100;
+
+  } catch(e) { console.warn('Settings load failed:', e); }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   loadSiteSettings();
   var om = document.getElementById('order-modal');
@@ -1411,6 +1462,9 @@ document.getElementById('btn-pay').addEventListener('click', function() {
 </div>
 
 <script>
+window.stripe=null; window.cardEl=null; window.selPay=null;
+let stripe=window.stripe, cardEl=window.cardEl, selPay=window.selPay;
+
 document.addEventListener("DOMContentLoaded", function() {
 
 // ── Auth helpers (déclarés tôt pour submitOrder) ──
@@ -1439,83 +1493,12 @@ const SUPABASE_URL  = 'https://gymckwyahpilmdoxlvaw.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5bWNrd3lhaHBpbG1kb3hsdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODM0MTksImV4cCI6MjA4Nzk1OTQxOX0.RzwTkLoVE8FZ4sOgGs04n11pBTLW6tSE3LqP_MY8Z3I';
 const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ── Chargement des paramètres depuis Supabase ──
-async function loadSiteSettings() {
-  if(!_sb) return;
-  try {
-    const { data } = await _sb.from('settings').select('*');
-    if(!data || !data.length) return;
-    const s = {};
-    data.forEach(r => s[r.key] = r.value);
-
-    // Mettre à jour le numéro WhatsApp
-    if(s.wa_number) {
-      const waBase = 'https://wa.me/' + s.wa_number;
-      const waText = '?text=Bonjour%2C+je+souhaite+une+livraison+avec+UrbanDrop';
-      document.querySelectorAll('a[href*="wa.me"]').forEach(a => {
-        if(a.href.includes('33775779593')) {
-          a.href = waBase + (a.href.includes('?text=') ? waText : '');
-        }
-      });
-      // Mettre à jour WA_NUMBER pour les WhatsApp dynamiques
-      window.WA_NUMBER_DYN = s.wa_number;
-    }
-
-    // Mettre à jour les prix sur les boutons véhicules
-    const updates = {
-      moto:         { base: s.moto_base,    km: s.moto_km },
-      fourgonnette: { base: s.fourgon_base, km: s.fourgon_km },
-      camionnette:  { base: s.camion_base,  km: s.camion_km },
-      'grand-volume':{ base: s.gv_base,     km: s.gv_km }
-    };
-
-    document.querySelectorAll('.hc-veh').forEach(el => {
-      const onclick = el.getAttribute('onclick') || '';
-      const match = onclick.match(/hcSelV\(this,'([^']+)',(\d+),([\d.]+)\)/);
-      if(match) {
-        const veh = match[1];
-        if(updates[veh]) {
-          const base = parseFloat(updates[veh].base) || parseFloat(match[2]);
-          const km   = parseFloat(updates[veh].km)   || parseFloat(match[3]);
-          el.setAttribute('onclick', "hcSelV(this,'"+veh+"',"+base+","+km+")");
-          // Mettre à jour le badge prix affiché
-          const vp = el.querySelector('.vp');
-          if(vp) vp.textContent = 'dès ' + base + '€';
-        }
-      }
-    });
-
-    // Express pct
-    if(s.express_pct) window.EXPRESS_PCT = parseFloat(s.express_pct)/100;
-
-  } catch(e) { console.warn('Settings load failed:', e); }
-}
-
-
-window.stripe=null; window.cardEl=null; window.selPay=null;
-let stripe=window.stripe, cardEl=window.cardEl, selPay=window.selPay;
 
 
 
-// ── Stripe ──
-window.initStripe = function initStripe() {
-  if(typeof Stripe==='undefined') return;
-  stripe = Stripe(STRIPE_PK);
-  const elems = stripe.elements();
-  cardEl = elems.create('card', {
-    hidePostalCode: true,
-    style:{
-      base:{fontFamily:'Plus Jakarta Sans,sans-serif',fontSize:'15px',color:'#1a3a4a','::placeholder':{color:'#9ab'}},
-      invalid:{color:'#e05'}
-    }
-  });
-  window.cardEl = cardEl;
-  window.stripe = stripe;
-  cardEl.mount('#card-element');
-  cardEl.on('change', e=>{
-    document.getElementById('card-errors').textContent = e.error ? e.error.message : '';
-  });
-}
+
+
+
 
 _register('selectPay', function(m) {
   selPay=m; window.selPay=m;
@@ -1611,9 +1594,7 @@ _register('submitOrder', async function() {
         });
         const can = await pr.canMakePayment();
         if(!can) {
-          alert('⚠️ ' + payName + ' n'est pas disponible sur cet appareil ou navigateur.
-
-Assurez-vous d'utiliser Safari (Apple Pay) ou Chrome (Google Pay) et qu'une carte est enregistrée.');
+          alert('⚠️ ' + payName + ' non disponible.\n\nUtilisez Safari (Apple Pay) ou Chrome (Google Pay) avec une carte enregistrée.');
           btn.disabled=false; btn.textContent='Réessayer'; return;
         }
         pr.on('paymentmethod', async ev => {
@@ -2143,6 +2124,26 @@ updateNavAuth();
 
 });
 </script>
+
+// ── Stripe ──
+window.initStripe = function initStripe() {
+  if(typeof Stripe==='undefined') return;
+  stripe = Stripe(STRIPE_PK);
+  const elems = stripe.elements();
+  cardEl = elems.create('card', {
+    hidePostalCode: true,
+    style:{
+      base:{fontFamily:'Plus Jakarta Sans,sans-serif',fontSize:'15px',color:'#1a3a4a','::placeholder':{color:'#9ab'}},
+      invalid:{color:'#e05'}
+    }
+  });
+  window.cardEl = cardEl;
+  window.stripe = stripe;
+  cardEl.mount('#card-element');
+  cardEl.on('change', e=>{
+    document.getElementById('card-errors').textContent = e.error ? e.error.message : '';
+  });
+}
 
 <script>
 // Chargement Stripe.js
