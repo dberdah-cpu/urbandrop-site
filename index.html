@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<!-- build:1773779959 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UrbanDrop – Livraison Express Paris</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -423,7 +424,7 @@ window.openOrderModal = function() {
   if(msuccess) msuccess.classList.remove('show');
   if(modal) modal.classList.add('open');
   document.body.style.overflow='hidden';
-  if(window.initStripe && !window.stripe) window.initStripe();
+  if(window.initStripe) window.initStripe(); // Toujours (re)monter le card element
 };
 window.closeModal = function() {
   document.getElementById('order-modal').classList.remove('open');
@@ -479,6 +480,34 @@ async function loadSiteSettings() {
 
   } catch(e) { console.warn('Settings load failed:', e); }
 }
+
+
+// ── initStripe dans le head pour garantir la disponibilité ──
+window.initStripe = function() {
+  if(typeof Stripe === 'undefined') { setTimeout(window.initStripe, 500); return; }
+  // Initialiser Stripe une seule fois
+  if(!window.stripe) {
+    window.stripe = Stripe('pk_test_51SOlGsIkO8stJgluJJsxdpVHqV6VlTy6rpqsExOrEYB10WePVZ5Z8E0HobLF0EqnTDsTdJS5WsMNwTQ5Z41kqHrL009zNrdUpe');
+  }
+  // Toujours (re)créer le card element car le modal peut être réouvert
+  var container = document.getElementById('card-element');
+  if(!container) return;
+  // Vider le container
+  container.innerHTML = '';
+  var elems = window.stripe.elements();
+  window.cardEl = elems.create('card', {
+    hidePostalCode: true,
+    style: {
+      base: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: '15px', color: '#1a3a4a', '::placeholder': { color: '#9ab' } },
+      invalid: { color: '#e05' }
+    }
+  });
+  window.cardEl.mount('#card-element');
+  window.cardEl.on('change', function(e) {
+    var err = document.getElementById('card-errors');
+    if(err) err.textContent = e.error ? e.error.message : '';
+  });
+};
 
 document.addEventListener('DOMContentLoaded', function() {
   loadSiteSettings();
@@ -2149,7 +2178,7 @@ window.initStripe = function initStripe() {
 // Chargement Stripe.js
 const _ss=document.createElement('script');
 _ss.src='https://js.stripe.com/v3/';
-_ss.onload=function(){ if(window.initStripe) window.initStripe(); };
+_ss.onload=function(){ window.initStripe && window.initStripe(); };
 document.head.appendChild(_ss);
 
 </script>
