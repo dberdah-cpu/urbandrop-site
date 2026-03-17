@@ -291,9 +291,18 @@
       scrollbar-width: none;
       flex-wrap: nowrap;
       max-width: calc(100vw - 60px);
+      -webkit-mask-image: linear-gradient(to right, black 70%, transparent 100%);
+      mask-image: linear-gradient(to right, black 70%, transparent 100%);
+      animation: nav-hint 1.5s ease 0.8s forwards;
     }
     .nav-cta::-webkit-scrollbar { display: none; }
     .nav-cta > * { flex-shrink: 0; }
+    @keyframes nav-hint {
+      0%   { transform: translateX(0); }
+      30%  { transform: translateX(-18px); }
+      60%  { transform: translateX(-8px); }
+      100% { transform: translateX(0); }
+    }
     section { padding:68px 24px; }
     #hero { grid-template-columns:1fr; overflow:visible; }
     .hero-left { padding:40px 20px 24px; order:1; }
@@ -1330,6 +1339,18 @@ function showPrice() {
           <div class="pay-card" id="pm-apple"  data-pm="apple"> <span class="pi"> </span><div class="pn">Apple Pay</div></div>
           <div class="pay-card" id="pm-google" data-pm="google"><span class="pi">🔵</span><div class="pn">Google Pay</div></div>
           <div class="pay-card" id="pm-paypal" data-pm="paypal"><span class="pi">🅿️</span><div class="pn">PayPal</div></div>
+        </div>
+        <!-- PayPal info -->
+        <div id="paypal-info" style="display:none;margin-top:12px;background:#f0f7ff;border:1.5px solid #b3d4ff;border-radius:12px;padding:14px 16px;">
+          <div style="font-size:0.8rem;font-weight:700;color:#003087;margin-bottom:6px;">🅿️ Payer via PayPal</div>
+          <div style="font-size:0.85rem;color:#444;margin-bottom:10px;">Vous allez être redirigé vers PayPal pour régler <strong id="paypal-amount" style="color:#003087;">—</strong></div>
+          <a id="paypal-link" href="#" target="_blank" 
+             style="display:inline-block;background:#0070ba;color:white;font-weight:800;font-size:0.85rem;padding:10px 20px;border-radius:8px;text-decoration:none;transition:background 0.2s;">
+            Payer maintenant sur PayPal →
+          </a>
+          <div style="font-size:0.7rem;color:#999;margin-top:8px;">Vous serez redirigé vers paypal.com · Paiement sécurisé</div>
+        </div>
+        
 <script>
 // Listener délégué sur les boutons de paiement — inline, s'exécute immédiatement
 (function() {
@@ -1350,6 +1371,15 @@ function showPrice() {
     if(btn) { btn.disabled=false; btn.textContent=labels[m]||'Payer'; }
     // Mettre à jour selPay pour submitOrder
     window.selPay = m;
+    // Afficher info PayPal
+    var ppInfo = document.getElementById('paypal-info');
+    if(ppInfo) {
+      ppInfo.style.display = m === 'paypal' ? 'block' : 'none';
+      if(m === 'paypal' && window._orderData) {
+        document.getElementById('paypal-amount').textContent = window._orderData.base + ' €';
+        document.getElementById('paypal-link').href = 'https://www.paypal.com/paypalme/urbandrop/' + window._orderData.base;
+      }
+    }
     if(window._realSelPay) window._realSelPay(m);
   });
 })();
@@ -1514,12 +1544,48 @@ _register('submitOrder', async function() {
       window.open('https://www.paypal.com/paypalme/urbandrop/'+d.base,'_blank');
       await saveOrder({depName, depPhone, arrName, arrPhone, note, ...d});
     } else if(selPay==='apple'||selPay==='google') {
-      if(stripe){
-        const pr=stripe.paymentRequest({country:'FR',currency:'eur',total:{label:'UrbanDrop Livraison',amount:d.base*100},requestPayerName:true});
-        const can=await pr.canMakePayment();
-        if(!can){alert('⚠️ '+(selPay==='apple'?'Apple Pay':'Google Pay')+' non disponible sur cet appareil.');btn.disabled=false;return;}
-        pr.on('paymentmethod',async ev=>{ ev.complete('success'); await saveOrder({depName,depPhone,arrName,arrPhone,note,...d}); });
+      const payName = selPay==='apple' ? 'Apple Pay' : 'Google Pay';
+      if(!stripe) {
+        alert('⚠️ Stripe non chargé. Veuillez choisir un autre moyen de paiement.');
+        btn.disabled=false; return;
+      }
+      try {
+        const pr = stripe.paymentRequest({
+          country:'FR', currency:'eur',
+          total:{ label:'UrbanDrop — Livraison', amount: Math.round(d.base*100) },
+          requestPayerName:true, requestPayerEmail:true
+        });
+        const can = await pr.canMakePayment();
+        if(!can) {
+          alert('⚠️ ' + payName + ' n'est pas disponible sur cet appareil ou navigateur.
+
+Assurez-vous d'utiliser Safari (Apple Pay) ou Chrome (Google Pay) et qu'une carte est enregistrée.');
+          btn.disabled=false; btn.textContent='Réessayer'; return;
+        }
+        pr.on('paymentmethod', async ev => {
+          try {
+            // Créer PaymentIntent côté serveur
+            const intentRes = await fetch(SUPABASE_URL+'/functions/v1/create-payment-intent', {
+              method:'POST',
+              headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
+              body:JSON.stringify({ amount:d.base, courseData:{dep:d.dep,arr:d.arr,dist:d.dist,vehicule:d.vehicule,service:d.svc,depName,depPhone,arrName,arrPhone,note} })
+            });
+            if(!intentRes.ok) throw new Error('Erreur serveur');
+            const { clientSecret } = await intentRes.json();
+            const {error} = await stripe.confirmCardPayment(clientSecret, {payment_method: ev.paymentMethod.id}, {handleActions:false});
+            if(error) { ev.complete('fail'); throw new Error(error.message); }
+            ev.complete('success');
+            await saveOrder({depName,depPhone,arrName,arrPhone,note,...d});
+            document.getElementById('mform').style.display='none';
+            document.getElementById('msuccess').classList.add('show');
+            if(window._lastRide) document.getElementById('msuccess-ref').textContent = 'Réf. ' + window._lastRide.ref;
+            resetAll();
+          } catch(err) { ev.complete('fail'); throw err; }
+        });
         pr.show(); btn.disabled=false; return;
+      } catch(err) {
+        alert('❌ ' + payName + ' : ' + err.message);
+        btn.disabled=false; btn.textContent='Réessayer'; return;
       }
     } else {
       await saveOrder({depName, depPhone, arrName, arrPhone, note, ...d});
@@ -1680,7 +1746,7 @@ document.getElementById('auth-modal').addEventListener('click', e => {
 });
 
 // ── Tabs inscription/connexion ──
-_register('switchAuthTab', function(tab) {
+_register('switchAuthTab', async function(tab) {
   document.getElementById('section-signup').classList.toggle('active', tab==='signup');
   document.getElementById('section-login').classList.toggle('active', tab==='login');
   document.getElementById('tab-signup').classList.toggle('active', tab==='signup');
@@ -1972,7 +2038,7 @@ function buildReceiptPDF(ride) {
   return doc;
 }
 
-_register('downloadReceipt', function(index) {
+_register('downloadReceipt', async function(index) {
   const hist = loadHistory();
   const ride = hist[index];
   if(!ride) return;
@@ -1980,7 +2046,7 @@ _register('downloadReceipt', function(index) {
   doc.save('recu-urbandrop-' + ride.ref + '.pdf');
 });
 
-_register('downloadLastReceipt', function() {
+_register('downloadLastReceipt', async function() {
   const ride = window._lastRide;
   if(!ride) { alert('Aucune course a telecharger.'); return; }
   const doc = buildReceiptPDF(ride);
