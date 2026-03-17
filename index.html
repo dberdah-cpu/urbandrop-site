@@ -430,6 +430,7 @@ window.closeModal = function() {
   document.body.style.overflow='';
 };
 document.addEventListener('DOMContentLoaded', function() {
+  loadSiteSettings();
   var om = document.getElementById('order-modal');
   if(om) om.addEventListener('click', function(e){
       if(e.target===e.currentTarget) window.closeModal();
@@ -643,7 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <span id="auth-nav-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:var(--teal);color:white;font-size:0.72rem;font-weight:700;display:none;align-items:center;justify-content:center;"></span>
       <span id="auth-nav-label">👤 Se connecter</span>
     </button>
-    <a href="urbandrop-chauffeur.html" target="_blank" class="btn-wa-nav" style="border-color:var(--teal);color:var(--teal-dark);font-weight:700;">🚗 Devenir chauffeur</a>
+    <a href="/urbandrop-chauffeur.html" class="btn-wa-nav" style="border-color:var(--teal);color:var(--teal-dark);font-weight:700;">🚗 Devenir chauffeur</a>
     <a href="#hero" class="btn-primary-nav">Commander →</a>
   </div>
 </nav>
@@ -1122,7 +1123,7 @@ function showPrice() {
   const arr=document.getElementById('hc-arr').value.trim();
   const svc=document.getElementById('hc-svc').value||'standard';
   let base=Math.ceil(hcB+hcK*hcDist);
-  if(svc==='express') base=Math.ceil(base*1.2);
+  if(svc==='express') base=Math.ceil(base*(1+(window.EXPRESS_PCT||0.2)));
   const max=base+3;
   window._orderData = { dep, arr, svc, dist:hcDist, vehicule:hcV, base, slot:window.calSelectedSlot||null };
   document.getElementById('hc-pnum').textContent=base+'€ – '+max+'€';
@@ -1438,6 +1439,59 @@ const SUPABASE_URL  = 'https://gymckwyahpilmdoxlvaw.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5bWNrd3lhaHBpbG1kb3hsdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODM0MTksImV4cCI6MjA4Nzk1OTQxOX0.RzwTkLoVE8FZ4sOgGs04n11pBTLW6tSE3LqP_MY8Z3I';
 const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// ── Chargement des paramètres depuis Supabase ──
+async function loadSiteSettings() {
+  if(!_sb) return;
+  try {
+    const { data } = await _sb.from('settings').select('*');
+    if(!data || !data.length) return;
+    const s = {};
+    data.forEach(r => s[r.key] = r.value);
+
+    // Mettre à jour le numéro WhatsApp
+    if(s.wa_number) {
+      const waBase = 'https://wa.me/' + s.wa_number;
+      const waText = '?text=Bonjour%2C+je+souhaite+une+livraison+avec+UrbanDrop';
+      document.querySelectorAll('a[href*="wa.me"]').forEach(a => {
+        if(a.href.includes('33775779593')) {
+          a.href = waBase + (a.href.includes('?text=') ? waText : '');
+        }
+      });
+      // Mettre à jour WA_NUMBER pour les WhatsApp dynamiques
+      window.WA_NUMBER_DYN = s.wa_number;
+    }
+
+    // Mettre à jour les prix sur les boutons véhicules
+    const updates = {
+      moto:         { base: s.moto_base,    km: s.moto_km },
+      fourgonnette: { base: s.fourgon_base, km: s.fourgon_km },
+      camionnette:  { base: s.camion_base,  km: s.camion_km },
+      'grand-volume':{ base: s.gv_base,     km: s.gv_km }
+    };
+
+    document.querySelectorAll('.hc-veh').forEach(el => {
+      const onclick = el.getAttribute('onclick') || '';
+      const match = onclick.match(/hcSelV\(this,'([^']+)',(\d+),([\d.]+)\)/);
+      if(match) {
+        const veh = match[1];
+        if(updates[veh]) {
+          const base = parseFloat(updates[veh].base) || parseFloat(match[2]);
+          const km   = parseFloat(updates[veh].km)   || parseFloat(match[3]);
+          el.setAttribute('onclick', "hcSelV(this,'"+veh+"',"+base+","+km+")");
+          // Mettre à jour le badge prix affiché
+          const vp = el.querySelector('.vp');
+          if(vp) vp.textContent = 'dès ' + base + '€';
+        }
+      }
+    });
+
+    // Express pct
+    if(s.express_pct) window.EXPRESS_PCT = parseFloat(s.express_pct)/100;
+
+  } catch(e) { console.warn('Settings load failed:', e); }
+}
+
+
 window.stripe=null; window.cardEl=null; window.selPay=null;
 let stripe=window.stripe, cardEl=window.cardEl, selPay=window.selPay;
 
@@ -1696,7 +1750,7 @@ async function saveOrder(o) {
     noteStr+'\n\n'+
     'Merci de confirmer la prise en charge !'
   );
-  setTimeout(()=>window.open('https://wa.me/'+WA_NUMBER+'?text='+waMsg,'_blank'),600);
+  setTimeout(()=>window.open('https://wa.me/'+(window.WA_NUMBER_DYN||WA_NUMBER)+'?text='+waMsg,'_blank'),600);
 
   // ── Sauvegarder dans l'historique ──
   const ref = 'UD-' + Date.now().toString(36).toUpperCase();
