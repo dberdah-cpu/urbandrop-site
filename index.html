@@ -431,9 +431,10 @@ window.closeModal = function() {
   document.body.style.overflow='';
 };
 async function loadSiteSettings() {
-  if(!_sb) return;
+  var sb = window._sb;
+  if(!sb) return;
   try {
-    const { data } = await _sb.from('settings').select('*');
+    const { data } = await sb.from('settings').select('*');
     if(!data || !data.length) return;
     const s = {};
     data.forEach(r => s[r.key] = r.value);
@@ -1521,6 +1522,7 @@ const WA_NUMBER   = '33775779593';
 const SUPABASE_URL  = 'https://gymckwyahpilmdoxlvaw.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5bWNrd3lhaHBpbG1kb3hsdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODM0MTksImV4cCI6MjA4Nzk1OTQxOX0.RzwTkLoVE8FZ4sOgGs04n11pBTLW6tSE3LqP_MY8Z3I';
 const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON);
+window._sb = _sb;
 
 
 
