@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UrbanDrop · Espace Chauffeur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal: #2CB5B0;
+  --teal-dark: #1a8f8a;
+  --teal-light: #3dd4cf;
+  --navy: #1a3a4a;
+  --white: #ffffff;
+  --bg: #f7f9fc;
+  --bg2: #eef2f7;
+  --text: #1a2e3b;
+  --muted: #6b8597;
+  --border: #dde6ed;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --orange: #ea580c;
+  --orange-bg: #fff7ed;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --shadow: 0 4px 20px rgba(26,58,74,0.08);
+  --shadow-lg: 0 8px 40px rgba(26,58,74,0.14);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* ── VIEWS ── */
+.view { display:none !important; }
+.view.active { display:block !important; }
+#view-auth { min-height:100vh; }
+#view-dashboard { min-height:100vh; }
+
+/* ══════════════════════
+   LOGIN / REGISTER PAGE
+══════════════════════ */
+#view-auth {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, #0f2535 0%, #1a3a4a 50%, #1a5a56 100%);
+  padding:20px; position:relative; overflow:hidden;
+}
+#view-auth::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 20% 50%, rgba(44,181,176,0.15) 0%, transparent 60%),
+             radial-gradient(ellipse at 80% 20%, rgba(61,212,207,0.1) 0%, transparent 50%);
+}
+.auth-card {
+  background:white; border-radius:28px; width:100%; max-width:460px;
+  box-shadow:0 32px 80px rgba(0,0,0,0.3); position:relative; z-index:1; overflow:hidden;
+}
+.auth-card-header {
+  background:linear-gradient(135deg,var(--teal),var(--teal-dark));
+  padding:32px 32px 28px; text-align:center;
+}
+.auth-logo { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:8px; }
+.auth-logo-icon { width:44px; height:44px; background:rgba(255,255,255,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center; }
+.auth-logo-text { font-size:1.4rem; font-weight:800; color:white; letter-spacing:-0.5px; }
+.auth-card-header p { font-size:0.85rem; color:rgba(255,255,255,0.8); }
+.auth-tabs { display:flex; border-bottom:2px solid var(--border); }
+.auth-tab-btn { flex:1; padding:14px; font-size:0.87rem; font-weight:700; color:var(--muted); background:none; border:none; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; }
+.auth-tab-btn.active { color:var(--teal); border-bottom-color:var(--teal); }
+.auth-body { padding:24px 32px 32px; }
+.auth-section { display:none; }
+.auth-section.active { display:block; }
+.af { margin-bottom:14px; }
+.af label { display:block; font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; }
+.af input, .af select { width:100%; padding:12px 16px; border:1.5px solid var(--border); border-radius:12px; font-family:'Plus Jakarta Sans',sans-serif; font-size:0.9rem; color:var(--navy); outline:none; transition:border-color 0.2s; background:white; }
+.af input:focus, .af select:focus { border-color:var(--teal); }
+.af input.err { border-color:var(--red); background:#fef9f9; }
+.af-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.af-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.auth-section-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:18px 0 12px; padding-top:16px; border-top:1px solid var(--border); }
+.btn-submit { width:100%; padding:15px; background:var(--teal); color:white; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.95rem; border:none; border-radius:14px; cursor:pointer; transition:all 0.25s; box-shadow:0 6px 20px rgba(44,181,176,0.35); margin-top:8px; }
+.btn-submit:hover { background:var(--teal-dark); transform:translateY(-1px); }
+.vehicle-select-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:14px; }
+.vehicle-option { border:1.5px solid var(--border); border-radius:12px; padding:12px 10px; text-align:center; cursor:pointer; background:white; transition:all 0.2s; }
+.vehicle-option:hover { border-color:var(--teal); }
+.vehicle-option.selected { border-color:var(--teal); background:rgba(44,181,176,0.08); }
+.vehicle-option .vo-icon { font-size:1.5rem; display:block; margin-bottom:4px; }
+.vehicle-option .vo-name { font-size:0.78rem; font-weight:700; color:var(--navy); }
+.upload-zone { border:2px dashed var(--border); border-radius:12px; padding:20px; text-align:center; cursor:pointer; transition:all 0.2s; position:relative; }
+.upload-zone:hover { border-color:var(--teal); background:rgba(44,181,176,0.03); }
+.upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.upload-zone .uz-icon { font-size:1.8rem; margin-bottom:6px; }
+.upload-zone .uz-text { font-size:0.8rem; color:var(--muted); }
+.upload-zone .uz-text strong { color:var(--teal); }
+.upload-zone.uploaded { border-color:var(--green); background:var(--green-bg); }
+.upload-zone.uploaded .uz-icon::after { content:'✅'; }
+
+/* ══════════════════════
+   DASHBOARD
+══════════════════════ */
+#view-dashboard { min-height:100vh; display:flex; flex-direction:column; }
+
+/* Top bar */
+.topbar {
+  background:white; border-bottom:1px solid var(--border);
+  padding:0 24px; height:64px; display:flex; align-items:center;
+  justify-content:space-between; position:sticky; top:0; z-index:100;
+  box-shadow:0 2px 12px rgba(26,58,74,0.06);
+}
+.topbar-logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.topbar-logo-icon { width:36px; height:36px; background:linear-gradient(135deg,var(--teal),var(--teal-dark)); border-radius:9px; display:flex; align-items:center; justify-content:center; }
+.topbar-logo-text { font-weight:800; font-size:1.1rem; color:var(--navy); }
+.topbar-logo-text span { font-size:0.62rem; color:var(--muted); font-weight:500; display:block; line-height:1; }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.driver-badge { display:flex; align-items:center; gap:10px; padding:6px 14px 6px 8px; background:var(--bg); border-radius:50px; border:1.5px solid var(--border); }
+.driver-avatar { width:30px; height:30px; border-radius:50%; background:var(--teal); display:flex; align-items:center; justify-content:center; color:white; font-weight:800; font-size:0.72rem; }
+.driver-name { font-size:0.82rem; font-weight:700; color:var(--navy); }
+.btn-logout-top { padding:7px 14px; border-radius:8px; border:1.5px solid var(--border); background:none; font-family:'Plus Jakarta Sans',sans-serif; font-size:0.78rem; font-weight:600; color:var(--muted); cursor:pointer; transition:all 0.2s; }
+.btn-logout-top:hover { border-color:var(--red); color:var(--red); }
+
+/* Status toggle */
+.status-bar { background:white; border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.status-toggle-wrap { display:flex; align-items:center; gap:14px; }
+.status-label { font-size:0.85rem; font-weight:700; color:var(--navy); }
+.toggle-switch { position:relative; width:60px; height:30px; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; inset:0; background:var(--border); border-radius:50px; cursor:pointer; transition:0.3s; }
+.toggle-slider:before { content:''; position:absolute; width:24px; height:24px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+input:checked + .toggle-slider { background:var(--green); }
+input:checked + .toggle-slider:before { transform:translateX(30px); }
+.status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+.status-dot.online { background:var(--green); animation:pulse-green 2s infinite; }
+.status-dot.offline { background:var(--muted); }
+@keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.4)} 50%{box-shadow:0 0 0 6px rgba(22,163,74,0)} }
+.status-text { font-size:0.82rem; font-weight:700; }
+.status-text.online { color:var(--green); }
+.status-text.offline { color:var(--muted); }
+.stats-row { display:flex; align-items:center; gap:20px; }
+.stat-mini { text-align:center; }
+.stat-mini .smv { font-size:1.1rem; font-weight:800; color:var(--navy); }
+.stat-mini .sml { font-size:0.65rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+
+/* Main layout */
+.dash-main { flex:1; display:grid; grid-template-columns:380px 1fr; gap:0; }
+
+/* Left panel */
+.dash-left { background:white; border-right:1px solid var(--border); overflow-y:auto; height:calc(100vh - 64px - 57px); position:sticky; top:121px; }
+.panel-header { padding:16px 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.panel-title { font-size:0.9rem; font-weight:800; color:var(--navy); }
+.panel-count { font-size:0.72rem; font-weight:700; color:var(--muted); background:var(--bg); padding:3px 8px; border-radius:20px; }
+
+/* Course card */
+.course-card { padding:16px 20px; border-bottom:1px solid var(--border); cursor:pointer; transition:all 0.2s; position:relative; }
+.course-card:hover { background:rgba(44,181,176,0.04); }
+.course-card.selected { background:rgba(44,181,176,0.08); border-left:3px solid var(--teal); }
+.course-card.new-course { animation:slideIn 0.4s ease; }
+@keyframes slideIn { from{transform:translateX(-20px);opacity:0} to{transform:translateX(0);opacity:1} }
+.cc-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.cc-ref { font-size:0.68rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
+.cc-badge { font-size:0.65rem; font-weight:800; padding:3px 9px; border-radius:20px; }
+.cc-badge.nouveau { background:rgba(44,181,176,0.12); color:var(--teal-dark); }
+.cc-badge.accepte { background:var(--green-bg); color:var(--green); }
+.cc-badge.en-cours { background:var(--orange-bg); color:var(--orange); }
+.cc-route { margin-bottom:8px; }
+.cc-dep { font-size:0.8rem; font-weight:600; color:var(--navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.cc-arr { font-size:0.8rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; }
+.cc-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.cc-dot.dep { background:var(--teal); }
+.cc-dot.arr { background:var(--navy); }
+.cc-bottom { display:flex; align-items:center; justify-content:space-between; }
+.cc-info { font-size:0.72rem; color:var(--muted); }
+.cc-price { font-size:1.05rem; font-weight:800; color:var(--teal); }
+.cc-timer { font-size:0.68rem; font-weight:700; color:var(--orange); display:flex; align-items:center; gap:3px; }
+.cc-vehicle { font-size:0.72rem; }
+.no-courses { text-align:center; padding:48px 24px; color:var(--muted); }
+.no-courses-icon { font-size:3rem; margin-bottom:12px; opacity:0.4; }
+
+/* Right panel — detail + map */
+.dash-right { display:flex; flex-direction:column; }
+.course-detail { padding:24px; border-bottom:1px solid var(--border); display:none; }
+.course-detail.visible { display:block; }
+.detail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.detail-ref { font-size:0.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
+.detail-price-big { font-size:2rem; font-weight:800; color:var(--teal); letter-spacing:-1px; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.detail-box { background:var(--bg); border-radius:12px; padding:12px 14px; }
+.detail-box-label { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:4px; }
+.detail-box-value { font-size:0.85rem; font-weight:600; color:var(--navy); line-height:1.4; }
+.detail-route { background:var(--bg); border-radius:14px; padding:16px; margin-bottom:16px; }
+.route-point { display:flex; align-items:flex-start; gap:12px; }
+.route-point + .route-point { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+.rp-dot-wrap { display:flex; flex-direction:column; align-items:center; padding-top:3px; }
+.rp-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+.rp-dot.dep { background:var(--teal); }
+.rp-dot.arr { background:var(--navy); }
+.rp-label { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:2px; }
+.rp-addr { font-size:0.85rem; font-weight:600; color:var(--navy); line-height:1.4; }
+.rp-contact { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+.action-buttons { display:flex; gap:10px; }
+.btn-accept { flex:1; padding:14px; background:var(--green); color:white; border:none; border-radius:12px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.9rem; cursor:pointer; transition:all 0.2s; }
+.btn-accept:hover { background:#15803d; transform:translateY(-1px); }
+.btn-refuse { padding:14px 20px; background:none; color:var(--red); border:1.5px solid rgba(220,38,38,0.3); border-radius:12px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.2s; }
+.btn-refuse:hover { background:var(--red-bg); border-color:var(--red); }
+.btn-complete { flex:1; padding:14px; background:var(--teal); color:white; border:none; border-radius:12px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.9rem; cursor:pointer; transition:all 0.2s; }
+.btn-complete:hover { background:var(--teal-dark); }
+.welcome-panel { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px; text-align:center; color:var(--muted); }
+.welcome-panel .wp-icon { font-size:4rem; margin-bottom:16px; opacity:0.3; }
+.welcome-panel h3 { font-size:1.1rem; font-weight:700; color:var(--navy); margin-bottom:8px; }
+.map-placeholder { flex:1; background:linear-gradient(160deg,#d4f0ee,#b8e4e2); display:flex; align-items:center; justify-content:center; min-height:300px; }
+#driver-map { flex:1; min-height:300px; }
+
+/* Notification toast */
+.toast { position:fixed; top:80px; right:20px; z-index:9999; background:var(--navy); color:white; padding:14px 20px; border-radius:14px; box-shadow:var(--shadow-lg); display:flex; align-items:center; gap:12px; max-width:340px; transform:translateX(120%); transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+.toast.show { transform:translateX(0); }
+.toast-icon { font-size:1.4rem; flex-shrink:0; }
+.toast-text strong { display:block; font-size:0.88rem; margin-bottom:2px; }
+.toast-text span { font-size:0.78rem; color:rgba(255,255,255,0.7); }
+.toast.new-ride { background:linear-gradient(135deg,var(--teal-dark),#0f7a76); }
+
+/* Profile tab */
+.profile-panel { padding:24px; }
+.profile-section-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:16px 0 10px; padding-top:14px; border-top:1px solid var(--border); }
+.profile-section-title:first-child { margin-top:0; padding-top:0; border-top:none; }
+.profile-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.pi-item { background:var(--bg); border-radius:10px; padding:10px 12px; }
+.pi-label { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:3px; }
+.pi-value { font-size:0.85rem; font-weight:600; color:var(--navy); }
+
+/* Bottom nav mobile */
+.bottom-nav { display:none; background:white; border-top:1px solid var(--border); padding:8px 0 env(safe-area-inset-bottom); }
+.bn-items { display:flex; }
+.bn-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px; cursor:pointer; color:var(--muted); font-size:0.62rem; font-weight:600; transition:color 0.2s; background:none; border:none; font-family:'Plus Jakarta Sans',sans-serif; }
+.bn-item.active { color:var(--teal); }
+.bn-icon { font-size:1.3rem; }
+.tab-content { display:none; }
+.tab-content.active { display:flex; flex:1; flex-direction:column; }
+
+/* Earnings */
+.earnings-panel { padding:20px 24px; }
+.earnings-card { background:linear-gradient(135deg,var(--teal),var(--teal-dark)); border-radius:20px; padding:24px; color:white; margin-bottom:20px; }
+.ec-label { font-size:0.72rem; font-weight:600; opacity:0.8; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; }
+.ec-amount { font-size:2.8rem; font-weight:800; letter-spacing:-1.5px; margin-bottom:4px; }
+.ec-sub { font-size:0.82rem; opacity:0.75; }
+.earnings-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+.eg-item { background:white; border-radius:14px; padding:14px; border:1.5px solid var(--border); text-align:center; }
+.eg-value { font-size:1.3rem; font-weight:800; color:var(--navy); }
+.eg-label { font-size:0.65rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+.history-list-title { font-size:0.82rem; font-weight:800; color:var(--navy); margin-bottom:12px; }
+.hist-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
+.hr-left { display:flex; gap:12px; align-items:center; }
+.hr-icon { width:36px; height:36px; border-radius:10px; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:1rem; }
+.hr-route { font-size:0.8rem; font-weight:600; color:var(--navy); }
+.hr-date { font-size:0.7rem; color:var(--muted); }
+.hr-price { font-size:0.95rem; font-weight:800; color:var(--green); }
+
+/* Mobile responsive */
+@media(max-width:768px) {
+  .dash-main { grid-template-columns:1fr; }
+  .dash-left { height:auto; position:static; border-right:none; border-bottom:1px solid var(--border); }
+  .bottom-nav { display:block; position:fixed; bottom:0; left:0; right:0; z-index:100; }
+  #view-dashboard { padding-bottom:70px; }
+  .status-bar { padding:10px 16px; }
+  .topbar { padding:0 16px; }
+  .detail-grid { grid-template-columns:1fr; }
+  .profile-info-grid { grid-template-columns:1fr; }
+  .earnings-grid { grid-template-columns:repeat(3,1fr); }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+// Fonctions appelées depuis le HTML — définies tôt
+function togglePwd(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if(!inp) return;
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
+function selectVehicle(el, v) {
+  document.querySelectorAll('.vehicle-option').forEach(function(x){ x.classList.remove('selected'); });
+  el.classList.add('selected');
+  window._selectedVehicle = v;
+  var inp = document.getElementById('r-vehicle');
+  if(inp) inp.value = v;
+}
+function switchTab(tab) {
+  ['register','login'].forEach(function(t) {
+    var sec = document.getElementById('section-'+t);
+    var btn = document.getElementById('tab-'+t);
+    if(sec) sec.classList.toggle('active', t===tab);
+    if(btn) btn.classList.toggle('active', t===tab);
+  });
+}
+function openForgotModal() {
+  var m = document.getElementById('forgot-modal');
+  if(m) { m.classList.add('open'); document.getElementById('forgot-email').value=''; }
+}
+function closeForgotModal() {
+  var m = document.getElementById('forgot-modal');
+  if(m) m.classList.remove('open');
+}
+function submitRegister() { if(window._submitRegister) window._submitRegister(); }
+function submitLogin() { if(window._submitLogin) window._submitLogin(); }
+function logout() { if(window._logout) window._logout(); else { localStorage.removeItem('ud_driver'); location.reload(); } }
+</script>
+</head>
+<body>
+
+<!-- ═══════════ TOAST NOTIFICATION ═══════════ -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toast-icon">🔔</span>
+  <div class="toast-text">
+    <strong id="toast-title">Notification</strong>
+    <span id="toast-msg">Message</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     VIEW 1 — INSCRIPTION / CONNEXION
+════════════════════════════════ -->
+<div id="view-auth" class="view active">
+  <div class="auth-card">
+    <div class="auth-card-header">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">
+          <svg width="24" height="24" viewBox="0 0 80 80" fill="none">
+            <path d="M40 6C25 6 14 17 14 31C14 49 40 72 40 72C40 72 66 49 66 31C66 17 55 6 40 6Z" fill="rgba(255,255,255,0.9)"/>
+            <circle cx="40" cy="31" r="10" fill="rgba(44,181,176,0.8)"/>
+          </svg>
+        </div>
+        <span class="auth-logo-text">UrbanDrop</span>
+      </div>
+      <p>Espace Chauffeur · Livreur</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab-btn active" id="tab-register" onclick="switchTab('register')">S'inscrire</button>
+      <button class="auth-tab-btn" id="tab-login" onclick="switchTab('login')">Se connecter</button>
+    </div>
+
+    <div class="auth-body">
+
+      <!-- INSCRIPTION -->
+      <div class="auth-section active" id="section-register">
+
+        <div class="af-row">
+          <div class="af"><label>Prénom *</label><input type="text" id="r-prenom" placeholder="Jean"></div>
+          <div class="af"><label>Nom *</label><input type="text" id="r-nom" placeholder="Dupont"></div>
+        </div>
+        <div class="af"><label>📧 E-mail *</label><input type="email" id="r-email" placeholder="jean@exemple.fr"></div>
+        <div class="af-row">
+          <div class="af"><label>📱 Téléphone *</label><input type="tel" id="r-tel" placeholder="+33 6 12 34 56 78"></div>
+          <div class="af"><label>🔒 Mot de passe *</label><div class="pwd-wrap"><input type="password" id="r-password" placeholder="Min. 8 caractères"><button class="pwd-toggle" type="button" onclick="togglePwd('r-password',this)">👁️</button></div></div>
+        </div>
+
+        <div class="auth-section-title">🚗 Véhicule principal</div>
+        <div class="vehicle-select-grid" id="vehicle-grid">
+          <div class="vehicle-option" onclick="selectVehicle(this,'moto')" data-v="moto">
+            <span class="vo-icon">🏍️</span><div class="vo-name">Moto</div>
+          </div>
+          <div class="vehicle-option" onclick="selectVehicle(this,'fourgonnette')" data-v="fourgonnette">
+            <span class="vo-icon">🚐</span><div class="vo-name">Fourgonnette</div>
+          </div>
+          <div class="vehicle-option" onclick="selectVehicle(this,'camionnette')" data-v="camionnette">
+            <span class="vo-icon">🚚</span><div class="vo-name">Camionnette</div>
+          </div>
+          <div class="vehicle-option" onclick="selectVehicle(this,'grand-volume')" data-v="grand-volume">
+            <span class="vo-icon">🏗️</span><div class="vo-name">20m³</div>
+          </div>
+        </div>
+        <input type="hidden" id="r-vehicle" value="">
+
+        <div class="auth-section-title">📋 Documents (obligatoires)</div>
+        <div class="af">
+          <label>Permis de conduire</label>
+          <div class="upload-zone" id="uz-permis">
+            <input type="file" accept="image/*,.pdf" onchange="handleUpload(this,'uz-permis','doc-permis')">
+            <div class="uz-icon">📄</div>
+            <div class="uz-text"><strong>Cliquez</strong> ou glissez votre fichier<br><small>JPG, PNG ou PDF · Max 5 Mo</small></div>
+          </div>
+          <input type="hidden" id="doc-permis" value="">
+        </div>
+        <div class="af">
+          <label>Carte grise du véhicule</label>
+          <div class="upload-zone" id="uz-carte-grise">
+            <input type="file" accept="image/*,.pdf" onchange="handleUpload(this,'uz-carte-grise','doc-carte-grise')">
+            <div class="uz-icon">📋</div>
+            <div class="uz-text"><strong>Cliquez</strong> ou glissez votre fichier<br><small>JPG, PNG ou PDF · Max 5 Mo</small></div>
+          </div>
+          <input type="hidden" id="doc-carte-grise" value="">
+        </div>
+        <div class="af">
+          <label>Assurance professionnelle</label>
+          <div class="upload-zone" id="uz-assurance">
+            <input type="file" accept="image/*,.pdf" onchange="handleUpload(this,'uz-assurance','doc-assurance')">
+            <div class="uz-icon">🛡️</div>
+            <div class="uz-text"><strong>Cliquez</strong> ou glissez votre fichier<br><small>JPG, PNG ou PDF · Max 5 Mo</small></div>
+          </div>
+          <input type="hidden" id="doc-assurance" value="">
+        </div>
+
+        <div class="auth-section-title">💳 Coordonnées bancaires (pour le paiement)</div>
+        <div class="af"><label>IBAN</label><input type="text" id="r-iban" placeholder="FR76 3000 6000 0112 3456 7890 189" oninput="fmtIban(this)"></div>
+        <div class="af-row">
+          <div class="af"><label>Banque</label><input type="text" id="r-banque" placeholder="BNP Paribas"></div>
+          <div class="af"><label>BIC</label><input type="text" id="r-bic" placeholder="BNPAFRPP"></div>
+        </div>
+
+        <button class="btn-submit" onclick="submitRegister()">Créer mon compte chauffeur →</button>
+        <p style="text-align:center;margin-top:12px;font-size:0.75rem;color:var(--muted);">En vous inscrivant, vous acceptez nos <a href="#" style="color:var(--teal);">CGU</a> et notre <a href="#" style="color:var(--teal);">politique de confidentialité</a>.</p>
+      </div>
+
+      <!-- CONNEXION -->
+      <div class="auth-section" id="section-login">
+        <div class="af"><label>📧 E-mail</label><input type="email" id="l-email" placeholder="jean@exemple.fr"></div>
+        <div class="af"><label>🔒 Mot de passe</label><div class="pwd-wrap"><input type="password" id="l-password" placeholder="Votre mot de passe"><button class="pwd-toggle" type="button" onclick="togglePwd('l-password',this)">👁️</button></div><button class="pwd-forgot" onclick="openForgotModal()">Mot de passe oublié ?</button></div>
+        <button class="btn-submit" onclick="submitLogin()" style="margin-top:8px;">Se connecter →</button>
+        <p style="text-align:center;margin-top:14px;font-size:0.8rem;color:var(--muted);">Pas encore de compte ? <a href="#" onclick="switchTab('register');return false;" style="color:var(--teal);font-weight:700;">S'inscrire</a></p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     VIEW 2 — DASHBOARD CHAUFFEUR
+════════════════════════════════ -->
+<div id="view-dashboard" class="view">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <a href="#" class="topbar-logo">
+      <div class="topbar-logo-icon">
+        <svg width="20" height="20" viewBox="0 0 80 80" fill="none">
+          <path d="M40 6C25 6 14 17 14 31C14 49 40 72 40 72C40 72 66 49 66 31C66 17 55 6 40 6Z" fill="white"/>
+          <circle cx="40" cy="31" r="10" fill="rgba(44,181,176,0.7)"/>
+        </svg>
+      </div>
+      <div>
+        <div class="topbar-logo-text">UrbanDrop</div>
+        <span class="topbar-logo-text" style="font-size:0.6rem;font-weight:500;color:var(--muted);">Espace Chauffeur</span>
+      </div>
+    </a>
+    <div class="topbar-right">
+      <div class="driver-badge">
+        <div class="driver-avatar" id="nav-avatar">JD</div>
+        <span class="driver-name" id="nav-name">Chauffeur</span>
+      </div>
+      <button class="btn-logout-top" onclick="logout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-toggle-wrap">
+      <span class="status-label">Je suis :</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="online-toggle" onchange="toggleStatus()">
+        <span class="toggle-slider"></span>
+      </label>
+      <div>
+        <span class="status-dot offline" id="status-dot"></span>
+        <span class="status-text offline" id="status-text">Hors ligne</span>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-mini"><div class="smv" id="stat-today">0</div><div class="sml">Courses aujourd'hui</div></div>
+      <div class="stat-mini"><div class="smv" id="stat-earnings">0€</div><div class="sml">Gains du jour</div></div>
+      <div class="stat-mini"><div class="smv" id="stat-rating">—</div><div class="sml">Note</div></div>
+    </div>
+  </div>
+
+  <!-- Main content with tabs -->
+  <div class="dash-main">
+
+    <!-- Left: course list (tab: courses) -->
+    <div class="dash-left tab-content active" id="tab-courses">
+      <div class="panel-header">
+        <span class="panel-title">🚦 Courses disponibles</span>
+        <span class="panel-count" id="courses-count">0 course</span>
+      </div>
+      <div id="courses-list">
+        <div class="no-courses">
+          <div class="no-courses-icon">😴</div>
+          <strong>Vous êtes hors ligne</strong><br>
+          <span style="font-size:0.8rem;margin-top:6px;display:block;">Activez votre statut pour recevoir des courses</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: detail + map -->
+    <div class="dash-right tab-content active" id="tab-map-detail">
+      <div class="course-detail" id="course-detail"></div>
+      <div class="welcome-panel" id="welcome-panel">
+        <div class="wp-icon">🗺️</div>
+        <h3>Prêt à livrer ?</h3>
+        <p style="font-size:0.85rem;margin-top:4px;">Passez en ligne et sélectionnez une course pour voir les détails</p>
+      </div>
+    </div>
+
+    <!-- Earnings tab -->
+    <div class="tab-content" id="tab-gains" style="grid-column:1/-1;">
+      <div class="earnings-panel">
+        <div class="earnings-card">
+          <div class="ec-label">Vos gains du mois (75%)</div>
+          <div class="ec-amount" id="earn-month">0 €</div>
+          <div class="ec-sub" id="earn-sub">0 course(s) ce mois</div>
+        </div>
+        <div class="earnings-grid">
+          <div class="eg-item"><div class="eg-value" id="earn-today-v">0€</div><div class="eg-label">Aujourd'hui</div></div>
+          <div class="eg-item"><div class="eg-value" id="earn-week-v">0€</div><div class="eg-label">Cette semaine</div></div>
+          <div class="eg-item"><div class="eg-value" id="earn-rides-v">0</div><div class="eg-label">Courses</div></div>
+        </div>
+        <div class="history-list-title">Historique des courses</div>
+        <div id="earnings-history"></div>
+      </div>
+    </div>
+
+    <!-- Profile tab -->
+    <div class="tab-content" id="tab-profil" style="grid-column:1/-1;">
+      <div class="profile-panel">
+        <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,rgba(44,181,176,0.1),rgba(44,181,176,0.03));border-radius:16px;margin-bottom:20px;">
+          <div style="width:60px;height:60px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:white;" id="profile-avatar-big">JD</div>
+          <div>
+            <div style="font-size:1.1rem;font-weight:800;color:var(--navy);" id="profile-fullname">Jean Dupont</div>
+            <div style="font-size:0.8rem;color:var(--muted);" id="profile-email-display"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1e747b7f705e7b667b736e727b30786c">[email&#160;protected]</a></div>
+            <div style="margin-top:6px;display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(44,181,176,0.1);color:var(--teal-dark);">
+              ✅ Compte actif
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section-title">Informations personnelles</div>
+        <div class="profile-info-grid">
+          <div class="pi-item"><div class="pi-label">Téléphone</div><div class="pi-value" id="profile-tel-display">—</div></div>
+          <div class="pi-item"><div class="pi-label">Véhicule</div><div class="pi-value" id="profile-vehicle-display">—</div></div>
+          <div class="pi-item"><div class="pi-label">IBAN</div><div class="pi-value" id="profile-iban-display">—</div></div>
+          <div class="pi-item"><div class="pi-label">Banque</div><div class="pi-value" id="profile-bank-display">—</div></div>
+        </div>
+
+        <div class="profile-section-title">Documents</div>
+        <div class="profile-info-grid">
+          <div class="pi-item"><div class="pi-label">Permis</div><div class="pi-value" id="doc-status-permis">—</div></div>
+          <div class="pi-item"><div class="pi-label">Carte grise</div><div class="pi-value" id="doc-status-cg">—</div></div>
+          <div class="pi-item"><div class="pi-label">Assurance</div><div class="pi-value" id="doc-status-ass">—</div></div>
+          <div class="pi-item"><div class="pi-label">Membre depuis</div><div class="pi-value" id="profile-since">—</div></div>
+        </div>
+
+        <button style="width:100%;margin-top:20px;padding:12px;background:none;border:1.5px solid rgba(220,38,38,0.3);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.85rem;color:var(--red);cursor:pointer;" onclick="logout()">Se déconnecter</button>
+      </div>
+    </div>
+
+  </div><!-- /dash-main -->
+
+  <!-- Bottom nav (mobile) -->
+  <nav class="bottom-nav">
+    <div class="bn-items">
+      <button class="bn-item active" id="bn-courses" onclick="switchDashTab('courses')">
+        <span class="bn-icon">🚦</span>Courses
+      </button>
+      <button class="bn-item" id="bn-gains" onclick="switchDashTab('gains')">
+        <span class="bn-icon">💰</span>Gains
+      </button>
+      <button class="bn-item" id="bn-profil" onclick="switchDashTab('profil')">
+        <span class="bn-icon">👤</span>Profil
+      </button>
+    </div>
+  </nav>
+
+</div><!-- /view-dashboard -->
+
+<script>
+// ════════════════════════════════════════════
+//  DATA & STATE
+// ════════════════════════════════════════════
+const COMMISSION = 0.75;
+function net(price) { return Math.round(price * COMMISSION); }
+
+// ── Supabase ──
+const SUPABASE_URL  = 'https://gymckwyahpilmdoxlvaw.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5bWNrd3lhaHBpbG1kb3hsdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODM0MTksImV4cCI6MjA4Nzk1OTQxOX0.RzwTkLoVE8FZ4sOgGs04n11pBTLW6tSE3LqP_MY8Z3I';
+const _sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON);
+let _realtimeChannel = null;
+
+let currentDriver = null;
+let isOnline = false;
+let selectedCourse = null;
+let activeCourses = [];
+let completedCourses = [];
+let simulationInterval = null;
+
+const VEHICLES = {
+  'moto': '🏍️ Moto',
+  'fourgonnette': '🚐 Fourgonnette',
+  'camionnette': '🚚 Camionnette',
+  'grand-volume': '🏗️ 20m³'
+};
+
+// ── Storage ──
+function saveDriver(d) { localStorage.setItem('ud_driver', JSON.stringify(d)); }
+function loadDriver() { try { return JSON.parse(localStorage.getItem('ud_driver')); } catch(e){ return null; } }
+function saveCompleted(list) { localStorage.setItem('ud_driver_rides', JSON.stringify(list)); }
+function loadCompleted() { try { return JSON.parse(localStorage.getItem('ud_driver_rides')||'[]'); } catch(e){ return []; } }
+
+// ════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════
+function switchTab(tab) {
+  ['register','login'].forEach(t => {
+    document.getElementById('section-'+t).classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+}
+
+let selectedVehicle = '';
+// selectVehicle défini dans le head
+
+function handleUpload(input, zoneId, hiddenId) {
+  const file = input.files[0];
+  if(!file) return;
+  const zone = document.getElementById(zoneId);
+  zone.classList.add('uploaded');
+  zone.querySelector(".uz-text").innerHTML = "<strong style=\"color:var(--green);\">\u2705 " + file.name + "</strong><br><small>" + (file.size/1024).toFixed(0) + " Ko</small>";
+  document.getElementById(hiddenId).value = file.name;
+}
+
+function fmtIban(el) {
+  let v = el.value.replace(/\s/g,'').toUpperCase();
+  el.value = v.replace(/(.{4})/g,'$1 ').trim();
+}
+
+window._submitRegister = async function() {
+  const prenom   = document.getElementById('r-prenom').value.trim();
+  const nom      = document.getElementById('r-nom').value.trim();
+  const email    = document.getElementById('r-email').value.trim();
+  const tel      = document.getElementById('r-tel').value.trim();
+  const password = document.getElementById('r-password').value;
+  const vehicle  = window._selectedVehicle || document.getElementById('r-vehicle').value;
+
+  let ok = true;
+  ['r-prenom','r-nom','r-email','r-tel','r-password'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('err');
+    if(!el.value.trim()) { el.classList.add('err'); ok=false; }
+  });
+  if(!vehicle) { showToast('⚠️','Sélectionnez votre véhicule','error'); return; }
+  if(password.length < 8) { document.getElementById('r-password').classList.add('err'); showToast('⚠️','Mot de passe trop court (min. 8 caractères)','error'); return; }
+  if(!ok) { showToast('⚠️','Remplissez tous les champs obligatoires','error'); return; }
+
+  try {
+    let supaId = null;
+    // Créer le compte Auth Supabase
+    if(_sb) {
+      const { data: authData, error: authErr } = await _sb.auth.signUp({ email, password });
+      if(authErr && !authErr.message.includes('already')) throw authErr;
+      supaId = authData?.user?.id || null;
+
+      // Insérer le profil chauffeur dans la base
+      if(supaId) {
+        const { error: dbErr } = await _sb.from('chauffeurs').insert({
+          auth_user_id: supaId,
+          prenom, nom, email, telephone: tel,
+          vehicule: vehicle,
+          iban: document.getElementById('r-iban').value.trim() || null,
+          banque: document.getElementById('r-banque').value.trim() || null,
+          bic: document.getElementById('r-bic').value.trim() || null,
+          statut: 'en_attente'
+        });
+        if(dbErr) console.warn('DB insert error:', dbErr);
+      }
+    }
+
+    const driver = {
+      prenom, nom, email, tel,
+      password: btoa(password),
+      _supaId: supaId,
+      vehicle, vehicleLabel: VEHICLES[vehicle] || vehicle,
+      iban: document.getElementById('r-iban').value.trim(),
+      banque: document.getElementById('r-banque').value.trim(),
+      bic: document.getElementById('r-bic').value.trim(),
+      docs: {
+        permis: document.getElementById('doc-permis').value || null,
+        carteGrise: document.getElementById('doc-carte-grise').value || null,
+        assurance: document.getElementById('doc-assurance').value || null
+      },
+      createdAt: new Date().toISOString(),
+      rating: null, totalRides: 0, totalEarnings: 0
+    };
+
+    // Récupérer l'ID Supabase du chauffeur créé
+    if(_sb && driver.email) {
+      const { data: dbDriver } = await _sb.from('chauffeurs').select('id').eq('email', driver.email).single();
+      if(dbDriver) driver._dbId = dbDriver.id;
+    }
+    saveDriver(driver);
+    currentDriver = driver;
+    completedCourses = loadCompleted();
+    enterDashboard();
+    showToast('🎉','Bienvenue '+prenom+' ! Votre compte est en attente de validation.','success');
+  } catch(err) {
+    showToast('❌', err.message, 'error');
+  }
+}
+
+window._submitLogin = async function() {
+  const email    = document.getElementById('l-email').value.trim();
+  const password = document.getElementById('l-password').value;
+  if(!email || !password) { showToast('⚠️','Remplissez e-mail et mot de passe','error'); return; }
+  try {
+    if(_sb) {
+      const { data, error } = await _sb.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+    }
+    const stored = loadDriver();
+    if(stored && stored.email === email) {
+      currentDriver = stored;
+    } else {
+      // Charger profil depuis Supabase
+      const { data: profile } = await _sb.from('chauffeurs').select('*').eq('email', email).single();
+      currentDriver = {
+        prenom: profile?.prenom || email.split('@')[0],
+        nom: profile?.nom || '',
+        email, tel: profile?.telephone || '',
+        vehicle: profile?.vehicule || '',
+        vehicleLabel: VEHICLES[profile?.vehicule] || profile?.vehicule || '',
+        iban: profile?.iban || '', banque: profile?.banque || '',
+        createdAt: profile?.created_at || new Date().toISOString(),
+        totalRides: profile?.nb_courses || 0,
+        totalEarnings: profile?.gains_totaux || 0,
+      };
+      saveDriver(currentDriver);
+    }
+    completedCourses = loadCompleted();
+    enterDashboard();
+    showToast('👋','Bon retour '+currentDriver.prenom+' !','success');
+  } catch(err) {
+    showToast('❌', err.message, 'error');
+  }
+}
+
+window._logout = function() {
+  isOnline = false;
+  clearInterval(simulationInterval);
+  // Mettre hors ligne en base
+  if(_sb && currentDriver?.email) {
+    _sb.from('chauffeurs').update({ en_ligne: false }).eq('email', currentDriver.email).then(()=>{});
+  }
+  document.getElementById('view-dashboard').classList.remove('active');
+  document.getElementById('view-auth').classList.add('active');
+  window.scrollTo(0, 0);
+  showToast('👋','À bientôt !','info');
+}
+
+// ════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════
+function enterDashboard() {
+  document.getElementById('view-auth').classList.remove('active');
+  document.getElementById('view-dashboard').classList.add('active');
+  window.scrollTo(0, 0);
+  document.body.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+  updateDriverUI();
+  updateStats();
+  renderEarningsHistory();
+}
+
+function updateDriverUI() {
+  if(!currentDriver) return;
+  const initials = (currentDriver.prenom[0]||'')+(currentDriver.nom[0]||'');
+  document.getElementById('nav-avatar').textContent = initials.toUpperCase();
+  document.getElementById('profile-avatar-big').textContent = initials.toUpperCase();
+  document.getElementById('nav-name').textContent = currentDriver.prenom;
+  document.getElementById('profile-fullname').textContent = currentDriver.prenom+' '+currentDriver.nom;
+  document.getElementById('profile-email-display').textContent = currentDriver.email;
+  document.getElementById('profile-tel-display').textContent = currentDriver.tel || '—';
+  document.getElementById('profile-vehicle-display').textContent = currentDriver.vehicleLabel || '—';
+  const iban = currentDriver.iban;
+  document.getElementById('profile-iban-display').textContent = iban ? '••••'+iban.replace(/\s/g,'').slice(-4) : '—';
+  document.getElementById('profile-bank-display').textContent = currentDriver.banque || '—';
+  document.getElementById('doc-status-permis').textContent = currentDriver.docs?.permis ? '✅ Fourni' : '⏳ Manquant';
+  document.getElementById('doc-status-cg').textContent = currentDriver.docs?.carteGrise ? '✅ Fourni' : '⏳ Manquant';
+  document.getElementById('doc-status-ass').textContent = currentDriver.docs?.assurance ? '✅ Fourni' : '⏳ Manquant';
+  const d = new Date(currentDriver.createdAt);
+  document.getElementById('profile-since').textContent = d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+}
+
+// ── Toggle online/offline ──
+function toggleStatus() {
+  isOnline = document.getElementById('online-toggle').checked;
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  dot.className = 'status-dot ' + (isOnline ? 'online' : 'offline');
+  txt.className = 'status-text ' + (isOnline ? 'online' : 'offline');
+  txt.textContent = isOnline ? 'En ligne' : 'Hors ligne';
+
+  // Mettre à jour en base (par auth_user_id ET par email)
+  if(_sb) {
+    if(currentDriver?._supaId) {
+      _sb.from('chauffeurs').update({ en_ligne: isOnline })
+        .eq('auth_user_id', currentDriver._supaId)
+        .then(({error}) => {
+          if(error) console.warn('Toggle by supaId failed:', error);
+        });
+    }
+    if(currentDriver?.email) {
+      _sb.from('chauffeurs').update({ en_ligne: isOnline })
+        .eq('email', currentDriver.email)
+        .then(({error}) => {
+          if(error) console.warn('Toggle by email failed:', error);
+        });
+    }
+  }
+
+  if(isOnline) {
+    showToast('✅','Vous êtes maintenant en ligne !','success');
+    startCourseSimulation();
+    subscribeRealtimeCourses();
+  } else {
+    clearInterval(simulationInterval);
+    if(_realtimeChannel) { _sb?.removeChannel(_realtimeChannel); _realtimeChannel = null; }
+    activeCourses = [];
+    renderCourseList();
+    showToast('😴','Vous êtes hors ligne','info');
+  }
+}
+
+// ── Simulated incoming courses ──
+const SAMPLE_ADDRESSES = [
+  {dep:'10 Rue de Rivoli, Paris 1er', arr:'25 Av. des Champs-Élysées, Paris 8e', dist:3.2, price:22},
+  {dep:'Gare du Nord, Paris 10e', arr:'Tour Eiffel, Paris 7e', dist:5.8, price:31},
+  {dep:'15 Rue Oberkampf, Paris 11e', arr:'Opéra Garnier, Paris 9e', dist:2.9, price:19},
+  {dep:'Marché Aligre, Paris 12e', arr:'La Defense, Puteaux', dist:8.4, price:42},
+  {dep:'Montmartre, Paris 18e', arr:'Place Italie, Paris 13e', dist:6.1, price:34},
+  {dep:'République, Paris 11e', arr:'Vincennes, Val-de-Marne', dist:7.3, price:38},
+  {dep:'Saint-Germain-des-Prés, Paris 6e', arr:'Boulogne-Billancourt', dist:9.2, price:45},
+  {dep:'Belleville, Paris 20e', arr:'Versailles, Yvelines', dist:24.5, price:88},
+];
+const SERVICES = ['Standard','Express (+20%)','Programmé'];
+const VEH_LABELS = ['🏍️ Moto','🚐 Fourgonnette','🚚 Camionnette'];
+
+function generateCourse() {
+  const a = SAMPLE_ADDRESSES[Math.floor(Math.random()*SAMPLE_ADDRESSES.length)];
+  const svc = SERVICES[Math.floor(Math.random()*SERVICES.length)];
+  const price = svc.includes('Express') ? Math.ceil(a.price*1.2) : a.price;
+  return {
+    ref: 'UD-'+Date.now().toString(36).toUpperCase().slice(-6),
+    dep: a.dep, arr: a.arr,
+    dist: a.dist, price,
+    service: svc,
+    vehicule: VEH_LABELS[Math.floor(Math.random()*VEH_LABELS.length)],
+    depName: ['Marie Durand','Pierre Martin','Sophie Bernard','Lucas Petit'][Math.floor(Math.random()*4)],
+    depPhone: '+33 6 '+Math.floor(10+Math.random()*90)+' '+Math.floor(10+Math.random()*90)+' '+Math.floor(10+Math.random()*90)+' '+Math.floor(10+Math.random()*90),
+    arrName: ['Ahmed Kader','Julie Leroy','Tom Moreau','Emma Blanc'][Math.floor(Math.random()*4)],
+    arrPhone: '+33 6 '+Math.floor(10+Math.random()*90)+' '+Math.floor(10+Math.random()*90)+' '+Math.floor(10+Math.random()*90)+' '+Math.floor(10+Math.random()*90),
+    note: Math.random()>0.6 ? 'Digicode: A'+Math.floor(1000+Math.random()*9000) : '',
+    status: 'nouveau',
+    createdAt: new Date().toISOString(),
+    countdown: 60
+  };
+}
+
+function startCourseSimulation() {
+  // First course immediately
+  setTimeout(() => {
+    if(!isOnline) return;
+    const course = generateCourse();
+    activeCourses.unshift(course);
+    renderCourseList();
+    showToast('🔔','Nouvelle course disponible !','new-ride');
+  }, 1500);
+
+  // Then random intervals
+  simulationInterval = setInterval(() => {
+    if(!isOnline || activeCourses.length >= 5) return;
+    if(Math.random() < 0.4) {
+      const course = generateCourse();
+      activeCourses.unshift(course);
+      renderCourseList();
+      showToast('🔔','Nouvelle course — vous gagnez '+net(course.price)+'€','new-ride');
+    }
+  }, 8000);
+
+  // Countdown timer
+  setInterval(() => {
+    activeCourses = activeCourses.map(c => {
+      if(c.status === 'nouveau') c.countdown = Math.max(0, (c.countdown||60)-1);
+      if(c.countdown === 0 && c.status === 'nouveau') {
+        c.status = 'expiré';
+        showToast('⏰','Course expirée — '+c.ref,'info');
+      }
+      return c;
+    }).filter(c => c.status !== 'expiré');
+    renderCourseList();
+    updateCountdowns();
+  }, 1000);
+}
+
+// ── Render course list ──
+function renderCourseList() {
+  const list = document.getElementById('courses-list');
+  const count = document.getElementById('courses-count');
+  const available = activeCourses.filter(c => c.status !== 'expiré');
+  count.textContent = available.length + ' course' + (available.length>1?'s':'');
+
+  if(!isOnline) {
+    list.innerHTML = `<div class="no-courses"><div class="no-courses-icon">😴</div><strong>Vous êtes hors ligne</strong><br><span style="font-size:0.8rem;margin-top:6px;display:block;">Activez votre statut pour recevoir des courses</span></div>`;
+    return;
+  }
+  if(!available.length) {
+    list.innerHTML = `<div class="no-courses"><div class="no-courses-icon">⏳</div><strong>En attente de courses...</strong><br><span style="font-size:0.8rem;margin-top:6px;display:block;">Les nouvelles courses apparaîtront ici automatiquement</span></div>`;
+    return;
+  }
+
+  list.innerHTML = available.map((c,i) => `
+    <div class="course-card ${selectedCourse?.ref===c.ref?'selected':''}" onclick="selectCourse(${i})">
+      <div class="cc-top">
+        <span class="cc-ref">📋 ${c.ref}</span>
+        <span class="cc-badge ${c.status}">${c.status==='nouveau'?'Nouvelle':c.status==='accepte'?'Acceptée':'En cours'}</span>
+      </div>
+      <div class="cc-route">
+        <div class="cc-dep"><span class="cc-dot dep"></span>${c.dep}</div>
+        <div class="cc-arr"><span class="cc-dot arr"></span>${c.arr}</div>
+      </div>
+      <div class="cc-bottom">
+        <div>
+          <div class="cc-info">${c.vehicule} · ${c.dist} km</div>
+          <div class="cc-info">${c.service}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="cc-price">${net(c.price)}€ <span style='font-size:0.6rem;font-weight:600;opacity:0.7;'>pour vous</span></div>
+          ${c.status==='nouveau'?`<div class="cc-timer" id="timer-${c.ref}">⏱ <span>${c.countdown}s</span></div>`:''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateCountdowns() {
+  activeCourses.filter(c=>c.status==='nouveau').forEach(c => {
+    const el = document.getElementById('timer-'+c.ref);
+    if(el) el.querySelector('span').textContent = c.countdown+'s';
+  });
+}
+
+// ── Select & show course detail ──
+function selectCourse(index) {
+  const available = activeCourses.filter(c => c.status !== 'expiré');
+  selectedCourse = available[index];
+  renderCourseList();
+  renderCourseDetail();
+}
+
+
+function navButtons(address, label) {
+  const encoded = encodeURIComponent(address);
+  return `
+    <div class="nav-section-title">🗺️ Naviguer vers ${label}</div>
+    <div class="nav-buttons">
+      <a class="btn-nav waze" href="https://waze.com/ul?q=${encoded}&navigate=yes" target="_blank">
+        <span class="btn-nav-icon">🔵</span>
+        <span class="btn-nav-label">Waze</span>
+      </a>
+      <a class="btn-nav gmaps" href="https://www.google.com/maps/dir/?api=1&destination=${encoded}" target="_blank">
+        <span class="btn-nav-icon">🗺️</span>
+        <span class="btn-nav-label">G. Maps</span>
+      </a>
+      <a class="btn-nav plans" href="https://maps.apple.com/?daddr=${encoded}" target="_blank">
+        <span class="btn-nav-icon">🍎</span>
+        <span class="btn-nav-label">Plans</span>
+      </a>
+    </div>
+  `;
+}
+
+function renderCourseDetail() {
+  const c = selectedCourse;
+  if(!c) return;
+  const detail = document.getElementById('course-detail');
+  const welcome = document.getElementById('welcome-panel');
+  detail.classList.add('visible');
+  welcome.style.display = 'none';
+
+  const isNew = c.status === 'nouveau';
+  const isActive = c.status === 'accepte' || c.status === 'en-cours';
+
+  detail.innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-ref">📋 ${c.ref}</div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-top:2px;">${c.service} · ${c.vehicule}</div>
+      </div>
+      <div>
+        <div class="detail-price-big">${net(c.price)}€ <span style="font-size:0.9rem;font-weight:600;color:var(--muted);">pour vous</span></div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">Prix total client : ${c.price}€ · Commission UrbanDrop : ${c.price - net(c.price)}€</div>
+      </div>
+    </div>
+
+    <div class="detail-route">
+      <div class="route-point">
+        <div class="rp-dot-wrap"><div class="rp-dot dep"></div></div>
+        <div style="flex:1;">
+          <div class="rp-label">Départ — Expéditeur</div>
+          <div class="rp-addr">${c.dep}</div>
+          <div class="rp-contact">
+            <a href="tel:${c.depPhone}" style="color:var(--teal);font-weight:700;text-decoration:none;">📞 ${c.depName} · ${c.depPhone}</a>
+          </div>
+        </div>
+      </div>
+      <div class="route-point">
+        <div class="rp-dot-wrap"><div class="rp-dot arr"></div></div>
+        <div style="flex:1;">
+          <div class="rp-label">Arrivée — Destinataire</div>
+          <div class="rp-addr">${c.arr}</div>
+          <div class="rp-contact">
+            <a href="tel:${c.arrPhone}" style="color:var(--teal);font-weight:700;text-decoration:none;">📞 ${c.arrName} · ${c.arrPhone}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${isActive ? `
+      ${navButtons(c.dep, 'le départ')}
+      ${navButtons(c.arr, 'l\'arrivée')}
+    ` : ''}
+
+    <div class="detail-grid">
+      <div class="detail-box"><div class="detail-box-label">Distance</div><div class="detail-box-value">${c.dist} km</div></div>
+      <div class="detail-box"><div class="detail-box-label">Service</div><div class="detail-box-value">${c.service}</div></div>
+      ${c.note?`<div class="detail-box" style="grid-column:1/-1"><div class="detail-box-label">📝 Note livreur</div><div class="detail-box-value">${c.note}</div></div>`:''}
+    </div>
+
+    <div class="action-buttons">
+      ${isNew ? `
+        <button class="btn-accept" onclick="acceptCourse()">✅ Accepter la course</button>
+        <button class="btn-refuse" onclick="refuseCourse()">✕</button>
+      ` : isActive ? `
+        <button class="btn-complete" onclick="completeCourse()">🏁 Marquer comme livré</button>
+      ` : ''}
+    </div>
+  `;
+}
+
+// ── Accept / Refuse / Complete ──
+async function acceptCourse() {
+  if(!selectedCourse) return;
+  try {
+    if(selectedCourse._dbId) await acceptCourseDB(selectedCourse._dbId);
+  } catch(e) { showToast('❌','Course déjà prise par un autre chauffeur','error'); refuseCourse(); return; }
+  selectedCourse.status = 'accepte';
+  renderCourseList();
+  renderCourseDetail();
+  showToast('✅','Course acceptée ! Rendez-vous au départ.','success');
+  updateStats();
+}
+
+function refuseCourse() {
+  if(!selectedCourse) return;
+  activeCourses = activeCourses.filter(c => c.ref !== selectedCourse.ref);
+  selectedCourse = null;
+  document.getElementById('course-detail').classList.remove('visible');
+  document.getElementById('welcome-panel').style.display = '';
+  renderCourseList();
+  showToast('↩️','Course refusée','info');
+}
+
+async function completeCourse() {
+  if(!selectedCourse) return;
+  const c = selectedCourse;
+  if(c._dbId) await completeCourseDB(c._dbId).catch(()=>{});
+  c.status = 'terminé';
+  c.completedAt = new Date().toISOString();
+  completedCourses.unshift(c);
+  saveCompleted(completedCourses);
+  if(currentDriver) {
+    currentDriver.totalRides = (currentDriver.totalRides||0) + 1;
+    currentDriver.totalEarnings = (currentDriver.totalEarnings||0) + net(c.price);
+    saveDriver(currentDriver);
+  }
+  activeCourses = activeCourses.filter(x => x.ref !== c.ref);
+  selectedCourse = null;
+  document.getElementById('course-detail').classList.remove('visible');
+  document.getElementById('welcome-panel').style.display = '';
+  renderCourseList();
+  updateStats();
+  renderEarningsHistory();
+  showToast('🎉','Livraison effectuée ! +'+net(c.price)+'€ encaissés','success');
+}
+
+// ── Stats ──
+function updateStats() {
+  const today = new Date().toDateString();
+  const todayCourses = completedCourses.filter(c => new Date(c.completedAt||c.createdAt).toDateString()===today);
+  const todayEarnings = todayCourses.reduce((s,c)=>s+net(c.price),0);
+  document.getElementById('stat-today').textContent = todayCourses.length;
+  document.getElementById('stat-earnings').textContent = todayEarnings+'€';
+  document.getElementById('stat-rating').textContent = completedCourses.length >= 3 ? '⭐ 4.9' : '—';
+  document.getElementById('earn-today-v').textContent = todayEarnings+'€';
+  const weekEarnings = completedCourses.reduce((s,c)=>s+net(c.price),0);
+  document.getElementById('earn-week-v').textContent = weekEarnings+'€';
+  document.getElementById('earn-rides-v').textContent = completedCourses.length;
+  document.getElementById('earn-month').textContent = weekEarnings+' €';
+  document.getElementById('earn-sub').textContent = completedCourses.length+' course(s) ce mois';
+}
+
+function renderEarningsHistory() {
+  const el = document.getElementById('earnings-history');
+  if(!completedCourses.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;padding:16px 0;">Aucune course terminée pour le moment.</p>';
+    return;
+  }
+  el.innerHTML = completedCourses.slice(0,20).map(c => `
+    <div class="hist-row">
+      <div class="hr-left">
+        <div class="hr-icon">${c.vehicule?.split(' ')[0]||'🚗'}</div>
+        <div>
+          <div class="hr-route">${c.dep.split(',')[0]} → ${c.arr.split(',')[0]}</div>
+          <div class="hr-date">${new Date(c.completedAt||c.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>
+      <div><div class="hr-price">+${net(c.price)}€</div><div style="font-size:0.65rem;color:var(--muted);">sur ${c.price}€</div></div>
+    </div>
+  `).join('');
+}
+
+// ── Dashboard tab navigation ──
+function switchDashTab(tab) {
+  ['courses','gains','profil'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('bn-'+t).classList.toggle('active', t===tab);
+  });
+  // On desktop, courses + map always visible
+  if(window.innerWidth > 768) {
+    document.getElementById('tab-courses').classList.add('active');
+    document.getElementById('tab-map-detail').classList.add('active');
+  }
+  if(tab==='profil') updateDriverUI();
+  if(tab==='gains') { updateStats(); renderEarningsHistory(); }
+}
+
+// ── Toast ──
+function showToast(icon, title, msg, type) {
+  // Handle 3 or 4 arg call
+  if(type === undefined && typeof msg === 'string' && ['success','error','info','new-ride'].includes(msg)) {
+    type = msg; msg = '';
+  }
+  const t = document.getElementById('toast');
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-msg').textContent = msg || '';
+  t.className = 'toast ' + (type||'');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+
+// ── Toggle password ──
+function togglePwd(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if(!inp) return;
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
+function openForgotModal() {
+  document.getElementById('forgot-modal').classList.add('open');
+  document.getElementById('forgot-email').value = '';
+}
+function closeForgotModal() {
+  document.getElementById('forgot-modal').classList.remove('open');
+}
+async function sendResetEmail() {
+  var email = document.getElementById('forgot-email').value.trim();
+  if(!email) { alert('Entrez votre adresse e-mail.'); return; }
+  var btn = document.querySelector('.btn-forgot-send');
+  btn.textContent = '⏳ Envoi…'; btn.disabled = true;
+  try {
+    if(typeof _sb !== 'undefined' && _sb) {
+      await _sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    }
+    closeForgotModal();
+    alert('✅ E-mail envoyé à ' + email + ' — vérifiez votre boîte mail.');
+  } catch(e) { alert('❌ ' + e.message); }
+  btn.textContent = 'Envoyer le lien'; btn.disabled = false;
+}
+
+// ════════════════════════════════════════
+//  GPS TRACKING
+// ════════════════════════════════════════
+let gpsWatchId = null;
+let gpsActive = false;
+let currentCourseId = null;
+
+function startGPS() {
+  if(!navigator.geolocation) { showToast('❌','GPS non supporté','error'); return; }
+  gpsActive = true;
+  gpsWatchId = navigator.geolocation.watchPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const vitesse = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : null;
+
+      // Mettre à jour position en base Supabase
+      if(_sb && currentDriver) {
+        const driverId = currentDriver._dbId || null;
+        if(driverId) {
+          await _sb.from('positions_chauffeurs').upsert({
+            chauffeur_id: driverId,
+            course_id: currentCourseId,
+            lat, lng, vitesse,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'chauffeur_id' });
+        }
+      }
+    },
+    (err) => { console.warn('GPS error:', err); },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+  );
+  showToast('📍','GPS activé — position partagée','success');
+}
+
+function stopGPS() {
+  if(gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+  gpsWatchId = null; gpsActive = false;
+  // Supprimer la position de la base
+  if(_sb && currentDriver?._dbId) {
+    _sb.from('positions_chauffeurs').delete().eq('chauffeur_id', currentDriver._dbId).then(()=>{});
+  }
+  showToast('📍','GPS désactivé','info');
+}
+
+// Démarrer GPS automatiquement quand une course est acceptée
+const _origAccept = window.acceptCourse;
+window.acceptCourse = async function() {
+  await _origAccept();
+  if(selectedCourse) {
+    currentCourseId = selectedCourse._dbId || null;
+    startGPS();
+    // Afficher le FAB chat
+    const fab = document.getElementById('chat-fab');
+    if(fab) fab.classList.add('visible');
+  }
+};
+
+// Arrêter GPS quand livraison terminée
+const _origComplete = window.completeCourse;
+window.completeCourse = async function() {
+  await _origComplete();
+  stopGPS();
+  currentCourseId = null;
+  const fab = document.getElementById('chat-fab');
+  if(fab) fab.classList.remove('visible');
+  closeChatRealtime();
+};
+
+// ════════════════════════════════════════
+//  MESSAGERIE TEMPS RÉEL
+// ════════════════════════════════════════
+let chatChannel = null;
+let chatCourseId = null;
+let unreadCount = 0;
+
+function openChat() {
+  if(!selectedCourse) { showToast('⚠️','Acceptez une course d\'abord','error'); return; }
+  chatCourseId = selectedCourse._dbId || null;
+  document.getElementById('chat-overlay').classList.add('open');
+  document.getElementById('chat-name').textContent = selectedCourse.depName || 'Client';
+  document.getElementById('chat-avatar').textContent = (selectedCourse.depName||'C')[0].toUpperCase();
+  unreadCount = 0;
+  updateChatBadge();
+  loadMessages();
+  subscribeChatRealtime();
+}
+
+function closeChat() {
+  document.getElementById('chat-overlay').classList.remove('open');
+}
+
+async function loadMessages() {
+  if(!_sb || !chatCourseId) return;
+  const { data } = await _sb.from('messages')
+    .select('*').eq('course_id', chatCourseId)
+    .order('created_at', { ascending: true });
+  renderMessages(data || []);
+  // Marquer comme lus
+  await _sb.from('messages').update({ lu: true })
+    .eq('course_id', chatCourseId).neq('expediteur','chauffeur');
+}
+
+function renderMessages(msgs) {
+  const el = document.getElementById('chat-messages');
+  if(!msgs.length) {
+    el.innerHTML = '<div class="chat-empty">💬 Aucun message pour cette course</div>';
+    return;
+  }
+  el.innerHTML = msgs.map(m => {
+    const isMe = m.expediteur === 'chauffeur';
+    const isAdmin = m.expediteur === 'admin';
+    const time = new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="chat-msg ${isMe?'sent':isAdmin?'admin':'received'}">
+      ${isAdmin?'<div style="font-size:0.65rem;font-weight:700;margin-bottom:3px;opacity:0.7;">ADMIN</div>':''}
+      ${m.contenu}
+      <div class="chat-msg-time">${time}</div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text || !chatCourseId || !_sb) return;
+  input.value = '';
+  await _sb.from('messages').insert({
+    course_id: chatCourseId,
+    expediteur: 'chauffeur',
+    expediteur_id: currentDriver?.email || null,
+    contenu: text
+  });
+}
+
+function subscribeChatRealtime() {
+  if(chatChannel) _sb?.removeChannel(chatChannel);
+  if(!_sb || !chatCourseId) return;
+  chatChannel = _sb.channel('chat-'+chatCourseId)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'messages',
+      filter: 'course_id=eq.'+chatCourseId
+    }, (payload) => {
+      loadMessages();
+      const overlay = document.getElementById('chat-overlay');
+      if(!overlay.classList.contains('open')) {
+        unreadCount++;
+        updateChatBadge();
+        showToast('💬', 'Nouveau message : '+payload.new.contenu.substring(0,30), 'info');
+      }
+    })
+    .subscribe();
+}
+
+function closeChatRealtime() {
+  if(chatChannel) { _sb?.removeChannel(chatChannel); chatChannel = null; }
+}
+
+function updateChatBadge() {
+  const badge = document.getElementById('chat-badge');
+  if(!badge) return;
+  badge.textContent = unreadCount;
+  badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+}
+
+// ── Init ──
+const saved = loadDriver();
+if(saved) {
+  currentDriver = saved;
+  completedCourses = loadCompleted();
+  enterDashboard();
+}
+</script>
+
+<!-- Modal mot de passe oublié -->
+<div class="forgot-overlay" id="forgot-modal">
+  <div class="forgot-box">
+    <h3>🔑 Mot de passe oublié</h3>
+    <p>Entrez votre adresse e-mail, vous recevrez un lien de réinitialisation.</p>
+    <input class="forgot-input" type="email" id="forgot-email" placeholder="votre@email.fr">
+    <div class="forgot-actions">
+      <button class="btn-forgot-cancel" onclick="closeForgotModal()">Annuler</button>
+      <button class="btn-forgot-send" onclick="sendResetEmail()">Envoyer le lien</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Overlay -->
+<div class="chat-overlay" id="chat-overlay">
+  <div class="chat-box">
+    <div class="chat-head">
+      <div class="chat-head-info">
+        <div class="chat-head-avatar" id="chat-avatar">?</div>
+        <div>
+          <div class="chat-head-name" id="chat-name">Messagerie</div>
+          <div class="chat-head-status" id="chat-status">En ligne</div>
+        </div>
+      </div>
+      <button class="chat-close" onclick="closeChat()">✕</button>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-empty">💬 Aucun message pour cette course</div>
+    </div>
+    <div class="chat-input-wrap">
+      <input class="chat-input" id="chat-input" placeholder="Écrivez un message…" onkeydown="if(event.key==='Enter')sendMessage()">
+      <button class="btn-send" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-fab" onclick="openChat()">
+  💬
+  <span class="chat-fab-badge" id="chat-badge" style="display:none">0</span>
+</button>
+
+</body>
+</html>

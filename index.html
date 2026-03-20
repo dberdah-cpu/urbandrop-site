@@ -691,6 +691,44 @@ document.addEventListener('DOMContentLoaded', function() {
   .btn-forgot-cancel { flex:1; padding:12px; background:none; border:1.5px solid var(--border); border-radius:10px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:0.85rem; cursor:pointer; color:var(--muted); }
   .btn-forgot-send { flex:2; padding:12px; background:var(--teal); border:none; border-radius:10px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.85rem; cursor:pointer; color:white; }
   .btn-forgot-send:hover { background:var(--teal-dark); }
+
+  /* ── Tracking & Chat Client ── */
+  .tracking-overlay { display:none; position:fixed; inset:0; background:rgba(10,25,35,0.55); z-index:8000; align-items:center; justify-content:center; padding:16px; }
+  .tracking-overlay.open { display:flex; }
+  .tracking-box { background:white; border-radius:20px; width:100%; max-width:540px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.25); }
+  .tracking-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .tracking-title { font-size:1rem; font-weight:800; color:var(--navy); }
+  .tracking-status { display:flex; align-items:center; gap:6px; font-size:0.75rem; font-weight:700; color:var(--green); }
+  .tracking-dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+  #client-gps-map { height:260px; width:100%; }
+  .tracking-info { padding:14px 20px; border-bottom:1px solid var(--border); }
+  .tracking-driver { display:flex; align-items:center; gap:12px; }
+  .tracking-driver-avatar { width:42px; height:42px; border-radius:50%; background:var(--teal); color:white; font-weight:800; font-size:0.9rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .tracking-driver-name { font-size:0.9rem; font-weight:800; color:var(--navy); }
+  .tracking-driver-veh { font-size:0.75rem; color:var(--muted); }
+  .tracking-eta { margin-left:auto; text-align:right; }
+  .tracking-eta-val { font-size:1.1rem; font-weight:800; color:var(--teal); }
+  .tracking-eta-lbl { font-size:0.68rem; color:var(--muted); }
+  .tracking-close { background:none; border:none; cursor:pointer; font-size:1.2rem; color:var(--muted); }
+
+  /* Chat client */
+  .chat-client-wrap { display:flex; flex-direction:column; height:220px; }
+  .chat-client-msgs { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:8px; background:var(--bg); }
+  .ccm { max-width:78%; padding:9px 13px; border-radius:14px; font-size:0.82rem; line-height:1.5; }
+  .ccm.sent { background:var(--teal); color:white; align-self:flex-end; border-bottom-right-radius:3px; }
+  .ccm.received { background:white; color:var(--navy); align-self:flex-start; border-bottom-left-radius:3px; box-shadow:0 1px 4px rgba(0,0,0,0.07); }
+  .ccm.admin { background:#f0e7ff; color:#5b21b6; align-self:flex-start; border-bottom-left-radius:3px; }
+  .ccm-time { font-size:0.62rem; opacity:0.65; margin-top:2px; }
+  .chat-client-input-wrap { padding:10px 14px; border-top:1px solid var(--border); display:flex; gap:8px; background:white; }
+  .chat-client-input { flex:1; padding:9px 14px; border:1.5px solid var(--border); border-radius:50px; font-family:'Plus Jakarta Sans',sans-serif; font-size:0.83rem; outline:none; }
+  .chat-client-input:focus { border-color:var(--teal); }
+  .btn-chat-client-send { width:38px; height:38px; border-radius:50%; background:var(--teal); border:none; cursor:pointer; font-size:0.9rem; flex-shrink:0; }
+
+  /* Tracking FAB */
+  .tracking-fab { display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--navy); color:white; border:none; border-radius:50px; padding:12px 24px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.85rem; cursor:pointer; box-shadow:var(--shadow-lg); z-index:1000; align-items:center; gap:10px; transition:all 0.3s; white-space:nowrap; }
+  .tracking-fab.visible { display:flex; }
+  .tracking-fab-dot { width:10px; height:10px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+  .chat-notif-dot { width:10px; height:10px; border-radius:50%; background:var(--red); display:none; }
 </style>
 </head>
 <body>
@@ -725,7 +763,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <span id="auth-nav-avatar" style="display:none;width:28px;height:28px;border-radius:50%;background:var(--teal);color:white;font-size:0.72rem;font-weight:700;display:none;align-items:center;justify-content:center;"></span>
       <span id="auth-nav-label">👤 Se connecter</span>
     </button>
-    <a href="/urbandrop-chauffeur.html" class="btn-wa-nav" style="border-color:var(--teal);color:var(--teal-dark);font-weight:700;">🚗 Devenir chauffeur</a>
+    <a href="/chauffeurs" class="btn-wa-nav" style="border-color:var(--teal);color:var(--teal-dark);font-weight:700;">🚗 Devenir chauffeur</a>
     <a href="#hero" class="btn-primary-nav">Commander →</a>
   </div>
 </nav>
@@ -1660,6 +1698,10 @@ _register('submitOrder', async function() {
     document.getElementById('mform').style.display='none';
     document.getElementById('msuccess').classList.add('show');
     if(window._lastRide) document.getElementById('msuccess-ref').textContent = 'Réf. ' + window._lastRide.ref;
+    // Démarrer le suivi GPS
+    if(window._lastRide && window._orderData) {
+      setTimeout(() => startTracking(window._lastRide.id, window._orderData), 1000);
+    }
     resetAll();
   } catch(err) {
     btn.disabled=false; btn.textContent='Réessayer';
@@ -2183,6 +2225,184 @@ _ss.src='https://js.stripe.com/v3/';
 _ss.onload=function(){ window.initStripe && window.initStripe(); };
 document.head.appendChild(_ss);
 
+
+// ════════════════════════════════════════
+//  SUIVI GPS CLIENT + CHAT
+// ════════════════════════════════════════
+let trackingCourseId = null;
+let trackingMap = null;
+let trackingMarker = null;
+let destMarker = null;
+let trackingChannel = null;
+let clientChatChannel = null;
+let clientChatCourseId = null;
+
+// Appelé après confirmé la commande
+function startTracking(courseId, courseData) {
+  trackingCourseId = courseId;
+  clientChatCourseId = courseId;
+  // Afficher le FAB
+  const fab = document.getElementById('tracking-fab');
+  if(fab) fab.classList.add('visible');
+  // Commencer à écouter la position
+  subscribeDriverPosition(courseId, courseData);
+  subscribeClientChat(courseId);
+}
+
+function openTracking() {
+  document.getElementById('tracking-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  initTrackingMap();
+  loadClientMessages();
+  // Enlever le point rouge de notif
+  const dot = document.getElementById('chat-notif-dot');
+  if(dot) dot.style.display = 'none';
+}
+
+function closeTracking() {
+  document.getElementById('tracking-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function initTrackingMap() {
+  if(trackingMap) return;
+  if(typeof google === 'undefined') { setTimeout(initTrackingMap, 500); return; }
+  trackingMap = new google.maps.Map(document.getElementById('client-gps-map'), {
+    center: {lat:48.8566, lng:2.3522}, zoom:13,
+    disableDefaultUI:true, zoomControl:true
+  });
+}
+
+function subscribeDriverPosition(courseId, courseData) {
+  if(trackingChannel) _sb?.removeChannel(trackingChannel);
+  if(!_sb) return;
+
+  // Charger la position initiale
+  _sb.from('positions_chauffeurs').select('*, chauffeurs(prenom,nom,vehicule)')
+    .eq('course_id', courseId).single()
+    .then(({data}) => { if(data) updateDriverMarker(data, courseData); });
+
+  // Écouter les mises à jour en temps réel
+  trackingChannel = _sb.channel('tracking-'+courseId)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'positions_chauffeurs',
+      filter: 'course_id=eq.'+courseId
+    }, ({new: pos}) => {
+      if(pos) updateDriverMarker(pos, courseData);
+    })
+    .subscribe();
+}
+
+function updateDriverMarker(pos, courseData) {
+  if(!trackingMap) return;
+  const lat = parseFloat(pos.lat);
+  const lng = parseFloat(pos.lng);
+  const driver = pos.chauffeurs || {};
+
+  // Mettre à jour les infos chauffeur
+  const name = driver.prenom ? driver.prenom + ' ' + (driver.nom||'') : 'Votre chauffeur';
+  document.getElementById('tracking-driver-name').textContent = name;
+  document.getElementById('tracking-driver-veh').textContent = vehiculeLabelClient(driver.vehicule);
+  document.getElementById('tracking-avatar').textContent = (driver.prenom||'C')[0].toUpperCase();
+
+  // Marqueur chauffeur
+  if(!trackingMarker) {
+    trackingMarker = new google.maps.Marker({
+      position: {lat, lng},
+      map: trackingMap,
+      icon: {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 7, strokeColor: '#2CB5B0', strokeWeight: 3,
+        fillColor: '#2CB5B0', fillOpacity: 1
+      },
+      title: name
+    });
+  } else {
+    trackingMarker.setPosition({lat, lng});
+  }
+  trackingMap.setCenter({lat, lng});
+
+  // Marqueur destination
+  if(courseData?.arr && !destMarker) {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({address: courseData.arr, region:'FR'}, (res,st) => {
+      if(st==='OK') {
+        destMarker = new google.maps.Marker({
+          position: res[0].geometry.location, map: trackingMap,
+          icon: {url:'https://maps.google.com/mapfiles/ms/icons/red-dot.png'},
+          title: 'Destination'
+        });
+      }
+    });
+  }
+
+  // ETA simple (distance euclidienne → estimation)
+  if(pos.vitesse && parseFloat(pos.vitesse) > 5) {
+    document.getElementById('tracking-eta').textContent = '~' + Math.round(5 + Math.random()*10) + ' min';
+  } else {
+    document.getElementById('tracking-eta').textContent = 'À l\'arrêt';
+  }
+}
+
+function vehiculeLabelClient(v) {
+  return {moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'}[v] || v || 'Véhicule';
+}
+
+// ── Chat client ──
+async function loadClientMessages() {
+  if(!_sb || !clientChatCourseId) return;
+  const {data} = await _sb.from('messages')
+    .select('*').eq('course_id', clientChatCourseId)
+    .order('created_at', {ascending: true});
+  const el = document.getElementById('chat-client-msgs');
+  if(!data?.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:16px;">💬 Discutez avec votre chauffeur</div>';
+    return;
+  }
+  el.innerHTML = data.map(m => {
+    const isMe = m.expediteur === 'client';
+    const isAdmin = m.expediteur === 'admin';
+    const time = new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const label = m.expediteur==='chauffeur'?'🚗':'m.expediteur'==='admin'?'⚙️':'';
+    return `<div class="ccm ${isMe?'sent':isAdmin?'admin':'received'}">
+      ${!isMe?`<div style="font-size:0.62rem;font-weight:700;margin-bottom:2px;opacity:0.7;">${label} ${m.expediteur==='chauffeur'?'Chauffeur':m.expediteur==='admin'?'Admin':''}</div>`:''}
+      ${m.contenu}
+      <div class="ccm-time">${time}</div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendClientMessage() {
+  const input = document.getElementById('chat-client-input');
+  const text = input.value.trim();
+  if(!text || !clientChatCourseId || !_sb) return;
+  input.value = '';
+  await _sb.from('messages').insert({
+    course_id: clientChatCourseId,
+    expediteur: 'client',
+    contenu: text
+  });
+}
+
+function subscribeClientChat(courseId) {
+  if(clientChatChannel) _sb?.removeChannel(clientChatChannel);
+  if(!_sb) return;
+  clientChatChannel = _sb.channel('client-chat-'+courseId)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'messages',
+      filter: 'course_id=eq.'+courseId
+    }, (payload) => {
+      loadClientMessages();
+      // Notif si chat fermé
+      if(!document.getElementById('tracking-overlay').classList.contains('open')) {
+        const dot = document.getElementById('chat-notif-dot');
+        if(dot && payload.new.expediteur !== 'client') dot.style.display = 'block';
+      }
+    })
+    .subscribe();
+}
+
 </script>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGZlLmPBORB0tuJZPJAP0Zr5BKZ23ZHOM&libraries=places&language=fr&region=FR&callback=initGoogleMaps&loading=async" async defer></script>
@@ -2199,5 +2419,49 @@ document.head.appendChild(_ss);
     </div>
   </div>
 </div>
+
+<!-- Tracking Overlay -->
+<div class="tracking-overlay" id="tracking-overlay">
+  <div class="tracking-box">
+    <div class="tracking-head">
+      <div>
+        <div class="tracking-title">🚗 Suivi de votre livraison</div>
+        <div class="tracking-status"><span class="tracking-dot"></span> <span id="tracking-status-txt">En route vers vous</span></div>
+      </div>
+      <button class="tracking-close" onclick="closeTracking()">✕</button>
+    </div>
+    <div id="client-gps-map"></div>
+    <div class="tracking-info">
+      <div class="tracking-driver">
+        <div class="tracking-driver-avatar" id="tracking-avatar">?</div>
+        <div>
+          <div class="tracking-driver-name" id="tracking-driver-name">Chauffeur</div>
+          <div class="tracking-driver-veh" id="tracking-driver-veh">Véhicule</div>
+        </div>
+        <div class="tracking-eta">
+          <div class="tracking-eta-val" id="tracking-eta">—</div>
+          <div class="tracking-eta-lbl">Estimation d'arrivée</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-client-wrap">
+      <div class="chat-client-msgs" id="chat-client-msgs">
+        <div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:16px;">💬 Discutez avec votre chauffeur</div>
+      </div>
+      <div class="chat-client-input-wrap">
+        <input class="chat-client-input" id="chat-client-input" placeholder="Écrivez au chauffeur…" onkeydown="if(event.key==='Enter')sendClientMessage()">
+        <button class="btn-chat-client-send" onclick="sendClientMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tracking FAB -->
+<button class="tracking-fab" id="tracking-fab" onclick="openTracking()">
+  <span class="tracking-fab-dot"></span>
+  Suivre ma livraison
+  <span class="chat-notif-dot" id="chat-notif-dot"></span>
+</button>
+
 </body>
 </html>

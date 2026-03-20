@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UrbanDrop · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root {
+  --teal:#2CB5B0; --teal-dark:#1a8f8a; --teal-light:#e8f8f7;
+  --navy:#1a3a4a; --white:#fff; --bg:#f0f4f8; --bg2:#e4ecf2;
+  --text:#1a2e3b; --muted:#6b8597; --border:#dde6ed;
+  --green:#16a34a; --green-bg:#f0fdf4;
+  --orange:#ea580c; --orange-bg:#fff7ed;
+  --red:#dc2626; --red-bg:#fef2f2;
+  --purple:#7c3aed; --purple-bg:#f5f3ff;
+  --shadow:0 2px 12px rgba(26,58,74,0.08);
+  --shadow-lg:0 8px 32px rgba(26,58,74,0.14);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:240px;background:var(--navy);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.1);}
+.sidebar-logo-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.logo-icon{width:36px;height:36px;background:var(--teal);border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.logo-text{font-size:1.15rem;font-weight:800;color:white;letter-spacing:-0.5px;}
+.logo-badge{font-size:0.6rem;font-weight:700;background:rgba(44,181,176,0.3);color:var(--teal-light);padding:2px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
+.sidebar-nav{flex:1;padding:16px 12px;overflow-y:auto;}
+.nav-section{font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.35);padding:12px 8px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;color:rgba(255,255,255,0.65);font-size:0.85rem;font-weight:600;transition:all 0.2s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:'Plus Jakarta Sans',sans-serif;}
+.nav-item:hover{background:rgba(255,255,255,0.08);color:white;}
+.nav-item.active{background:var(--teal);color:white;}
+.nav-icon{font-size:1.1rem;width:22px;text-align:center;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--teal);color:white;font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:20px;}
+.nav-badge.red{background:var(--red);}
+.sidebar-bottom{padding:16px;border-top:1px solid rgba(255,255,255,0.1);}
+.admin-info{display:flex;align-items:center;gap:10px;}
+.admin-avatar{width:36px;height:36px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;color:white;font-size:0.8rem;flex-shrink:0;}
+.admin-name{font-size:0.82rem;font-weight:700;color:white;}
+.admin-role{font-size:0.68rem;color:rgba(255,255,255,0.45);}
+.btn-logout-side{margin-left:auto;background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.4);font-size:0.9rem;padding:4px;}
+.btn-logout-side:hover{color:var(--red);}
+
+/* ── MAIN ── */
+.main{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:white;border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+.topbar-title{font-size:1rem;font-weight:800;color:var(--navy);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.status-indicator{display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:700;color:var(--green);}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.btn-refresh{padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.78rem;font-weight:700;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.btn-refresh:hover{border-color:var(--teal);color:var(--teal);}
+.page{padding:24px 28px;display:none;flex:1;}
+.page.active{display:block;}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.kpi-card{background:white;border-radius:16px;padding:20px;border:1.5px solid var(--border);position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi-card.teal::before{background:var(--teal);}
+.kpi-card.green::before{background:var(--green);}
+.kpi-card.orange::before{background:var(--orange);}
+.kpi-card.purple::before{background:var(--purple);}
+.kpi-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px;}
+.kpi-value{font-size:2rem;font-weight:800;color:var(--navy);letter-spacing:-1px;}
+.kpi-sub{font-size:0.75rem;color:var(--muted);margin-top:4px;}
+.kpi-icon{position:absolute;top:16px;right:16px;font-size:1.8rem;opacity:0.15;}
+
+/* ── SECTION HEADER ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.section-title{font-size:1rem;font-weight:800;color:var(--navy);}
+.section-actions{display:flex;gap:8px;}
+
+/* ── TABLE ── */
+.table-wrap{background:white;border-radius:16px;border:1.5px solid var(--border);overflow:hidden;}
+.table-filters{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.filter-input{padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.82rem;color:var(--navy);outline:none;}
+.filter-input:focus{border-color:var(--teal);}
+.filter-select{padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.82rem;color:var(--navy);outline:none;background:white;cursor:pointer;}
+.filter-select:focus{border-color:var(--teal);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--bg);}
+th{padding:11px 16px;text-align:left;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);white-space:nowrap;}
+td{padding:13px 16px;font-size:0.83rem;border-top:1px solid var(--border);vertical-align:middle;}
+tr:hover td{background:rgba(44,181,176,0.03);}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.badge.en_attente{background:#fef9c3;color:#854d0e;}
+.badge.proposee{background:var(--purple-bg);color:var(--purple);}
+.badge.acceptee{background:var(--green-bg);color:var(--green);}
+.badge.en_cours{background:var(--orange-bg);color:var(--orange);}
+.badge.livree{background:var(--green-bg);color:var(--green);}
+.badge.annulee{background:var(--red-bg);color:var(--red);}
+.badge.actif{background:var(--green-bg);color:var(--green);}
+.badge.en_attente_val{background:#fef9c3;color:#854d0e;}
+.badge.suspendu{background:var(--red-bg);color:var(--red);}
+.td-ref{font-family:monospace;font-size:0.78rem;font-weight:700;color:var(--teal-dark);}
+.td-addr{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:0.78rem;}
+.td-price{font-weight:800;color:var(--navy);}
+.btn-action{padding:5px 12px;border-radius:7px;border:1.5px solid var(--border);background:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.72rem;font-weight:700;cursor:pointer;transition:all 0.2s;color:var(--text);}
+.btn-action:hover{border-color:var(--teal);color:var(--teal);}
+.btn-action.green{border-color:rgba(22,163,74,0.3);color:var(--green);}
+.btn-action.green:hover{background:var(--green-bg);}
+.btn-action.red{border-color:rgba(220,38,38,0.3);color:var(--red);}
+.btn-action.red:hover{background:var(--red-bg);}
+.btn-action.teal{background:var(--teal);color:white;border-color:var(--teal);}
+.btn-action.teal:hover{background:var(--teal-dark);}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.stats-card{background:white;border-radius:16px;padding:20px;border:1.5px solid var(--border);}
+.stats-card-title{font-size:0.85rem;font-weight:800;color:var(--navy);margin-bottom:16px;}
+.bar-chart{display:flex;flex-direction:column;gap:10px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-label{font-size:0.75rem;color:var(--muted);width:80px;flex-shrink:0;text-align:right;}
+.bar-track{flex:1;height:10px;background:var(--bg);border-radius:20px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:20px;background:var(--teal);transition:width 0.6s ease;}
+.bar-val{font-size:0.75rem;font-weight:700;color:var(--navy);width:40px;flex-shrink:0;}
+.revenue-total{font-size:2.5rem;font-weight:800;color:var(--navy);letter-spacing:-1.5px;margin-bottom:4px;}
+.revenue-sub{font-size:0.8rem;color:var(--muted);}
+.revenue-breakdown{margin-top:16px;display:flex;flex-direction:column;gap:10px;}
+.rev-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;}
+.rev-label{font-size:0.82rem;color:var(--muted);}
+.rev-val{font-size:0.9rem;font-weight:800;color:var(--navy);}
+
+/* ── ASSIGN MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,25,35,0.6);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:white;border-radius:20px;width:100%;max-width:520px;overflow:hidden;box-shadow:var(--shadow-lg);}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h3{font-size:1rem;font-weight:800;color:var(--navy);}
+.modal-close{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);}
+.modal-body{padding:24px;}
+.course-recap{background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px;}
+.cr-row{display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:6px;}
+.cr-label{color:var(--muted);}
+.cr-val{font-weight:700;color:var(--navy);}
+.chauffeur-list{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;}
+.chauffeur-option{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;cursor:pointer;transition:all 0.2s;}
+.chauffeur-option:hover{border-color:var(--teal);background:var(--teal-light);}
+.chauffeur-option.selected{border-color:var(--teal);background:var(--teal-light);}
+.ch-avatar{width:36px;height:36px;border-radius:50%;background:var(--teal);color:white;font-weight:800;font-size:0.82rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ch-name{font-size:0.85rem;font-weight:700;color:var(--navy);}
+.ch-info{font-size:0.72rem;color:var(--muted);}
+.ch-status{margin-left:auto;font-size:0.68rem;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--green-bg);color:var(--green);}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.btn-cancel{padding:10px 20px;background:none;border:1.5px solid var(--border);border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--muted);}
+.btn-assign{padding:10px 20px;background:var(--teal);border:none;border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:0.85rem;cursor:pointer;color:white;transition:all 0.2s;}
+.btn-assign:hover{background:var(--teal-dark);}
+.btn-assign:disabled{opacity:0.5;cursor:not-allowed;}
+
+/* ── LOGIN ── */
+#page-login{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#0f2535,#1a3a4a,#1a5a56);}
+.login-box{background:white;border-radius:24px;padding:40px;width:100%;max-width:380px;box-shadow:0 32px 80px rgba(0,0,0,0.3);}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;justify-content:center;}
+.login-title{font-size:1.3rem;font-weight:800;color:var(--navy);text-align:center;margin-bottom:6px;}
+.login-sub{font-size:0.83rem;color:var(--muted);text-align:center;margin-bottom:28px;}
+.lf{margin-bottom:14px;}
+.lf label{display:block;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;}
+.lf input{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.9rem;color:var(--navy);outline:none;transition:border-color 0.2s;}
+.lf input:focus{border-color:var(--teal);}
+.btn-login{width:100%;padding:14px;background:var(--teal);color:white;border:none;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:0.95rem;cursor:pointer;margin-top:8px;transition:all 0.2s;box-shadow:0 6px 20px rgba(44,181,176,0.35);}
+.btn-login:hover{background:var(--teal-dark);}
+
+/* ── TOAST ── */
+.toast{position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;border-radius:12px;font-size:0.85rem;font-weight:700;color:white;transform:translateX(120%);transition:transform 0.3s;box-shadow:var(--shadow-lg);}
+.toast.show{transform:translateX(0);}
+.toast.success{background:var(--green);}
+.toast.error{background:var(--red);}
+.toast.info{background:var(--navy);}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:48px;color:var(--muted);}
+.empty-icon{font-size:3rem;opacity:0.3;margin-bottom:12px;}
+
+@media(max-width:900px){
+  .sidebar{display:none;}
+  .main{margin-left:0;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .stats-grid{grid-template-columns:1fr;}
+}
+
+  /* ── Toggle Password ── */
+  .pwd-wrap { position:relative; }
+  .pwd-wrap input { padding-right:44px !important; width:100%; }
+  .pwd-toggle { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1rem; color:var(--muted); padding:4px; line-height:1; }
+  .pwd-toggle:hover { color:var(--teal); }
+  .pwd-forgot { display:block; text-align:right; font-size:0.75rem; color:var(--teal); font-weight:600; text-decoration:none; margin-top:6px; cursor:pointer; background:none; border:none; font-family:'Plus Jakarta Sans',sans-serif; }
+  .pwd-forgot:hover { color:var(--teal-dark); text-decoration:underline; }
+  .forgot-overlay { display:none; position:fixed; inset:0; background:rgba(10,25,35,0.5); z-index:30000; align-items:center; justify-content:center; padding:20px; }
+  .forgot-overlay.open { display:flex; }
+  .forgot-box { background:white; border-radius:20px; padding:28px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+  .forgot-box h3 { font-size:1rem; font-weight:800; color:var(--navy); margin-bottom:6px; }
+  .forgot-box p { font-size:0.82rem; color:var(--muted); margin-bottom:18px; }
+  .forgot-input { width:100%; padding:12px 16px; border:1.5px solid var(--border); border-radius:12px; font-family:'Plus Jakarta Sans',sans-serif; font-size:0.9rem; color:var(--navy); outline:none; margin-bottom:14px; }
+  .forgot-input:focus { border-color:var(--teal); }
+  .forgot-actions { display:flex; gap:8px; }
+  .btn-forgot-cancel { flex:1; padding:12px; background:none; border:1.5px solid var(--border); border-radius:10px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:0.85rem; cursor:pointer; color:var(--muted); }
+  .btn-forgot-send { flex:2; padding:12px; background:var(--teal); border:none; border-radius:10px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.85rem; cursor:pointer; color:white; }
+  .btn-forgot-send:hover { background:var(--teal-dark); }
+
+  /* ── Settings ── */
+  .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .settings-card { background:white; border-radius:16px; border:1.5px solid var(--border); padding:24px; }
+  .settings-card-title { font-size:0.9rem; font-weight:800; color:var(--navy); margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+  .sf { margin-bottom:14px; }
+  .sf label { display:block; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; }
+  .sf input { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:10px; font-family:'Plus Jakarta Sans',sans-serif; font-size:0.9rem; color:var(--navy); outline:none; transition:border-color 0.2s; }
+  .sf input:focus { border-color:var(--teal); }
+  .sf-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn-save-settings { width:100%; padding:12px; background:var(--teal); color:white; border:none; border-radius:10px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.9rem; cursor:pointer; margin-top:8px; transition:all 0.2s; }
+  .btn-save-settings:hover { background:var(--teal-dark); }
+  .settings-info { font-size:0.75rem; color:var(--muted); background:var(--bg); border-radius:8px; padding:10px 12px; margin-bottom:14px; line-height:1.6; }
+  @media(max-width:700px){ .settings-grid { grid-template-columns:1fr; } }
+
+  /* ── GPS Map Admin ── */
+  .gps-map-wrap { background:white; border-radius:16px; border:1.5px solid var(--border); overflow:hidden; margin-bottom:20px; }
+  .gps-map-head { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .gps-map-head h3 { font-size:0.9rem; font-weight:800; color:var(--navy); }
+  #admin-gps-map { height:380px; width:100%; }
+  .driver-marker-info { font-family:'Plus Jakarta Sans',sans-serif; font-size:0.82rem; font-weight:700; }
+
+  /* Chat Admin */
+  .chat-admin-overlay { display:none; position:fixed; inset:0; background:rgba(10,25,35,0.5); z-index:5000; align-items:center; justify-content:center; padding:20px; }
+  .chat-admin-overlay.open { display:flex; }
+  .chat-admin-box { background:white; border-radius:20px; width:100%; max-width:520px; height:70vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.2); }
+  .chat-admin-head { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .chat-admin-title { font-size:0.9rem; font-weight:800; color:var(--navy); }
+  .chat-admin-msgs { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .chat-msg { max-width:80%; padding:10px 14px; border-radius:16px; font-size:0.85rem; line-height:1.5; }
+  .chat-msg.admin-sent { background:var(--navy); color:white; align-self:flex-end; border-bottom-right-radius:4px; }
+  .chat-msg.from-driver { background:var(--bg); color:var(--navy); align-self:flex-start; border-bottom-left-radius:4px; }
+  .chat-msg.from-client { background:rgba(44,181,176,0.1); color:var(--navy); align-self:flex-start; }
+  .chat-msg-time { font-size:0.65rem; opacity:0.6; margin-top:3px; }
+  .chat-admin-input-wrap { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; }
+  .chat-admin-input { flex:1; padding:10px 14px; border:1.5px solid var(--border); border-radius:50px; font-family:'Plus Jakarta Sans',sans-serif; font-size:0.85rem; outline:none; }
+  .chat-admin-input:focus { border-color:var(--teal); }
+  .btn-chat-send { width:40px; height:40px; border-radius:50%; background:var(--teal); border:none; cursor:pointer; font-size:1rem; }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="page-login" style="width:100%;position:fixed;inset:0;z-index:9000;display:flex;">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-icon"><svg width="20" height="20" viewBox="0 0 80 80" fill="none"><path d="M40 6C25 6 14 17 14 31C14 49 40 72 40 72C40 72 66 49 66 31C66 17 55 6 40 6Z" fill="white"/><circle cx="40" cy="31" r="10" fill="rgba(44,181,176,0.7)"/></svg></div>
+      <span style="font-size:1.2rem;font-weight:800;color:var(--navy);">UrbanDrop</span>
+    </div>
+    <div class="login-title">Espace Administrateur</div>
+    <div class="login-sub">Accès restreint au personnel autorisé</div>
+    <div class="lf"><label>E-mail</label><input type="email" id="l-email" placeholder="admin@urbandrop.fr"></div>
+    <div class="lf"><label>Mot de passe</label><div class="pwd-wrap"><input type="password" id="l-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"><button class="pwd-toggle" type="button" onclick="togglePwd('l-pwd',this)">👁️</button></div></div>
+    <button class="pwd-forgot" style="margin-bottom:8px;" onclick="openForgotModal()">Mot de passe oublié ?</button>
+    <button class="btn-login" onclick="doLogin()">Connexion →</button>
+    <p id="login-err" style="color:var(--red);font-size:0.78rem;text-align:center;margin-top:10px;display:none;"></p>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ ASSIGN MODAL ══ -->
+<div class="modal-overlay" id="assign-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>🚗 Attribuer la course</h3>
+      <button class="modal-close" onclick="closeAssignModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="course-recap" id="assign-recap"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);">Tous les chauffeurs</div>
+        <input id="assign-search" type="text" placeholder="🔍 Rechercher…" oninput="filterAssignList()"
+          style="padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.78rem;outline:none;width:160px;">
+      </div>
+      <div class="chauffeur-list" id="chauffeur-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeAssignModal()">Annuler</button>
+      <button class="btn-assign" id="btn-do-assign" onclick="doAssign()" disabled>Attribuer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SIDEBAR ══ -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-top">
+      <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 80 80" fill="none"><path d="M40 6C25 6 14 17 14 31C14 49 40 72 40 72C40 72 66 49 66 31C66 17 55 6 40 6Z" fill="white"/><circle cx="40" cy="31" r="10" fill="rgba(44,181,176,0.7)"/></svg></div>
+      <span class="logo-text">UrbanDrop</span>
+    </div>
+    <span class="logo-badge">Admin</span>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-section">Principal</div>
+    <button class="nav-item active" onclick="switchPage('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">📊</span> Tableau de bord
+    </button>
+    <button class="nav-item" onclick="switchPage('courses')" id="nav-courses">
+      <span class="nav-icon">🚦</span> Courses
+      <span class="nav-badge red" id="badge-pending">0</span>
+    </button>
+    <button class="nav-item" onclick="switchPage('chauffeurs')" id="nav-chauffeurs">
+      <span class="nav-icon">🧑‍✈️</span> Chauffeurs
+      <span class="nav-badge" id="badge-drivers">0</span>
+    </button>
+
+    <div class="nav-section">Analyse</div>
+    <button class="nav-item" onclick="switchPage('stats')" id="nav-stats">
+      <span class="nav-icon">📈</span> Statistiques
+    </button>
+    <button class="nav-item" onclick="switchPage('historique')" id="nav-historique">
+      <span class="nav-icon">📋</span> Historique
+    </button>
+    <button class="nav-item" onclick="switchPage('gps')" id="nav-gps">
+      <span class="nav-icon">📍</span> Suivi GPS
+    </button>
+    <div class="nav-section">Configuration</div>
+    <button class="nav-item" onclick="switchPage('parametres')" id="nav-parametres">
+      <span class="nav-icon">⚙️</span> Paramètres
+    </button>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="admin-info">
+      <div class="admin-avatar">AD</div>
+      <div>
+        <div class="admin-name">Admin</div>
+        <div class="admin-role">Accès complet</div>
+      </div>
+      <button class="btn-logout-side" onclick="doLogout()" title="Déconnexion">⏏</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main" id="main-app" style="display:none;">
+
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Tableau de bord</div>
+    <div class="topbar-right">
+      <div class="status-indicator"><span class="status-dot"></span> Temps réel actif</div>
+      <button class="btn-refresh" onclick="loadAll()">↻ Actualiser</button>
+    </div>
+  </div>
+
+  <!-- PAGE: DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="kpi-grid">
+      <div class="kpi-card teal"><div class="kpi-label">Courses aujourd'hui</div><div class="kpi-value" id="kpi-today">—</div><div class="kpi-sub" id="kpi-today-sub">En cours de chargement</div><div class="kpi-icon">🚚</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Revenus du jour</div><div class="kpi-value" id="kpi-revenue">—</div><div class="kpi-sub" id="kpi-revenue-sub">Stripe confirmés</div><div class="kpi-icon">💰</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">En attente</div><div class="kpi-value" id="kpi-pending">—</div><div class="kpi-sub">Courses sans chauffeur</div><div class="kpi-icon">⏳</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Chauffeurs en ligne</div><div class="kpi-value" id="kpi-online">—</div><div class="kpi-sub">Disponibles maintenant</div><div class="kpi-icon">🟢</div></div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">🔴 Courses en attente d'attribution</div>
+      <button class="btn-action teal" onclick="switchPage('courses')">Voir tout →</button>
+    </div>
+    <div class="table-wrap" style="margin-bottom:24px;">
+      <table>
+        <thead><tr><th>Référence</th><th>Départ</th><th>Arrivée</th><th>Véhicule</th><th>Montant</th><th>Statut</th><th>Action</th></tr></thead>
+        <tbody id="pending-table"></tbody>
+      </table>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">🟢 Chauffeurs en ligne</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Chauffeur</th><th>Véhicule</th><th>Statut</th><th>Courses totales</th><th>Gains totaux</th></tr></thead>
+        <tbody id="online-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: COURSES -->
+  <div class="page" id="page-courses">
+    <div class="table-wrap">
+      <div class="table-filters">
+        <input class="filter-input" id="filter-search" placeholder="🔍 Rechercher une course…" oninput="filterCourses()">
+        <select class="filter-select" id="filter-statut" onchange="filterCourses()">
+          <option value="">Tous les statuts</option>
+          <option value="en_attente">En attente</option>
+          <option value="proposee">Proposée</option>
+          <option value="acceptee">Acceptée</option>
+          <option value="livree">Livrée</option>
+          <option value="annulee">Annulée</option>
+        </select>
+        <select class="filter-select" id="filter-vehicule" onchange="filterCourses()">
+          <option value="">Tous les véhicules</option>
+          <option value="moto">🏍️ Moto</option>
+          <option value="fourgonnette">🚐 Fourgonnette</option>
+          <option value="camionnette">🚚 Camionnette</option>
+          <option value="grand-volume">🏗️ 20m³</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>Réf.</th><th>Date</th><th>Départ</th><th>Arrivée</th><th>Véhicule</th><th>Service</th><th>Montant</th><th>Statut</th><th>Chauffeur</th><th>Action</th></tr></thead>
+        <tbody id="courses-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: CHAUFFEURS -->
+  <div class="page" id="page-chauffeurs">
+    <div class="table-wrap">
+      <div class="table-filters">
+        <input class="filter-input" id="filter-driver" placeholder="🔍 Rechercher un chauffeur…" oninput="filterDrivers()">
+        <select class="filter-select" id="filter-driver-statut" onchange="filterDrivers()">
+          <option value="">Tous les statuts</option>
+          <option value="actif">Actif</option>
+          <option value="en_attente">En attente de validation</option>
+          <option value="suspendu">Suspendu</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>Chauffeur</th><th>Contact</th><th>Véhicule</th><th>En ligne</th><th>Courses</th><th>Gains (75%)</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody id="chauffeurs-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: STATS -->
+  <div class="page" id="page-stats">
+    <div class="stats-grid">
+      <div class="stats-card">
+        <div class="stats-card-title">Revenus UrbanDrop (25%)</div>
+        <div class="revenue-total" id="stats-revenue-total">0 €</div>
+        <div class="revenue-sub">Marge totale sur toutes les courses livrées</div>
+        <div class="revenue-breakdown">
+          <div class="rev-row"><span class="rev-label">Aujourd'hui</span><span class="rev-val" id="stats-rev-today">0 €</span></div>
+          <div class="rev-row"><span class="rev-label">Cette semaine</span><span class="rev-val" id="stats-rev-week">0 €</span></div>
+          <div class="rev-row"><span class="rev-label">Ce mois</span><span class="rev-val" id="stats-rev-month">0 €</span></div>
+          <div class="rev-row"><span class="rev-label">Total reversé aux chauffeurs (75%)</span><span class="rev-val" id="stats-rev-drivers">0 €</span></div>
+        </div>
+      </div>
+      <div class="stats-card">
+        <div class="stats-card-title">Courses par véhicule</div>
+        <div class="bar-chart" id="vehicle-chart"></div>
+      </div>
+      <div class="stats-card">
+        <div class="stats-card-title">Courses par statut</div>
+        <div class="bar-chart" id="status-chart"></div>
+      </div>
+      <div class="stats-card">
+        <div class="stats-card-title">Top chauffeurs du mois</div>
+        <div id="top-drivers-list"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- PAGE: GPS -->
+  <div class="page" id="page-gps">
+    <div class="gps-map-wrap">
+      <div class="gps-map-head">
+        <h3>📍 Position des chauffeurs en temps réel</h3>
+        <span class="status-indicator"><span class="status-dot"></span> Live</span>
+      </div>
+      <div id="admin-gps-map"></div>
+    </div>
+    <div class="section-header">
+      <div class="section-title">🚗 Chauffeurs actifs</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Chauffeur</th><th>Véhicule</th><th>Position</th><th>Vitesse</th><th>Mise à jour</th><th>Action</th></tr></thead>
+        <tbody id="gps-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAGE: PARAMETRES -->
+  <div class="page" id="page-parametres">
+    <div class="settings-grid">
+
+      <!-- Numéro WhatsApp -->
+      <div class="settings-card">
+        <div class="settings-card-title">📱 Numéro WhatsApp</div>
+        <div class="settings-info">Ce numéro reçoit toutes les notifications de commandes. Modifiez-le pour rediriger les WhatsApp vers un autre numéro.</div>
+        <div class="sf">
+          <label>Numéro WhatsApp (format international)</label>
+          <input type="text" id="set-wa-number" placeholder="33775779593" value="33775779593">
+        </div>
+        <div class="sf">
+          <label>Aperçu du lien</label>
+          <input type="text" id="set-wa-preview" readonly style="background:var(--bg);color:var(--muted);font-size:0.78rem;" value="https://wa.me/33775779593">
+        </div>
+        <button class="btn-save-settings" onclick="saveWhatsApp()">💾 Enregistrer le numéro</button>
+      </div>
+
+      <!-- Tarifs véhicules -->
+      <div class="settings-card">
+        <div class="settings-card-title">🏍️ Tarif Moto</div>
+        <div class="sf-row">
+          <div class="sf"><label>Prix de base (€)</label><input type="number" id="set-moto-base" value="15" min="1"></div>
+          <div class="sf"><label>Prix/km (€)</label><input type="number" id="set-moto-km" value="1" min="0.1" step="0.1"></div>
+        </div>
+        <div class="settings-card-title" style="margin-top:16px;">🚐 Tarif Fourgonnette</div>
+        <div class="sf-row">
+          <div class="sf"><label>Prix de base (€)</label><input type="number" id="set-fourgon-base" value="25" min="1"></div>
+          <div class="sf"><label>Prix/km (€)</label><input type="number" id="set-fourgon-km" value="1.5" min="0.1" step="0.1"></div>
+        </div>
+        <div class="settings-card-title" style="margin-top:16px;">🚚 Tarif Camionnette</div>
+        <div class="sf-row">
+          <div class="sf"><label>Prix de base (€)</label><input type="number" id="set-camion-base" value="40" min="1"></div>
+          <div class="sf"><label>Prix/km (€)</label><input type="number" id="set-camion-km" value="2" min="0.1" step="0.1"></div>
+        </div>
+        <div class="settings-card-title" style="margin-top:16px;">🏗️ Tarif 20m³</div>
+        <div class="sf-row">
+          <div class="sf"><label>Prix de base (€)</label><input type="number" id="set-gv-base" value="60" min="1"></div>
+          <div class="sf"><label>Prix/km (€)</label><input type="number" id="set-gv-km" value="2.5" min="0.1" step="0.1"></div>
+        </div>
+        <button class="btn-save-settings" onclick="saveTarifs()">💾 Enregistrer les tarifs</button>
+      </div>
+
+      <!-- Majoration Express -->
+      <div class="settings-card">
+        <div class="settings-card-title">⚡ Service Express</div>
+        <div class="settings-info">Majoration appliquée automatiquement sur le prix de base quand le client choisit "Express".</div>
+        <div class="sf">
+          <label>Majoration Express (%)</label>
+          <input type="number" id="set-express-pct" value="20" min="0" max="100">
+        </div>
+        <button class="btn-save-settings" onclick="saveExpress()">💾 Enregistrer</button>
+      </div>
+
+      <!-- Commission chauffeur -->
+      <div class="settings-card">
+        <div class="settings-card-title">💰 Commission chauffeurs</div>
+        <div class="settings-info">Pourcentage du prix total reversé aux chauffeurs. Le reste est la marge UrbanDrop.</div>
+        <div class="sf">
+          <label>Commission chauffeur (%)</label>
+          <input type="number" id="set-commission" value="75" min="1" max="99">
+        </div>
+        <div class="sf">
+          <label>Aperçu pour une course de 30€</label>
+          <input type="text" id="set-commission-preview" readonly style="background:var(--bg);color:var(--muted);" value="Chauffeur: 22.50€ · UrbanDrop: 7.50€">
+        </div>
+        <button class="btn-save-settings" onclick="saveCommission()">💾 Enregistrer</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PAGE: HISTORIQUE -->
+  <div class="page" id="page-historique">
+    <div class="table-wrap">
+      <div class="table-filters">
+        <input class="filter-input" id="filter-hist" placeholder="🔍 Référence, adresse…" oninput="filterHistory()">
+        <select class="filter-select" id="filter-hist-statut" onchange="filterHistory()">
+          <option value="">Tous</option>
+          <option value="livree">Livrées</option>
+          <option value="annulee">Annulées</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>Réf.</th><th>Date</th><th>Expéditeur</th><th>Départ → Arrivée</th><th>Véhicule</th><th>Montant</th><th>Chauffeur</th><th>Statut</th></tr></thead>
+        <tbody id="history-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════
+const SUPABASE_URL  = 'https://gymckwyahpilmdoxlvaw.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5bWNrd3lhaHBpbG1kb3hsdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODM0MTksImV4cCI6MjA4Nzk1OTQxOX0.RzwTkLoVE8FZ4sOgGs04n11pBTLW6tSE3LqP_MY8Z3I';
+const ADMIN_EMAIL   = 'admin@urbandrop.fr';
+const ADMIN_PASSWORD = 'UrbanDrop2024!';
+
+const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let allCourses = [], allDrivers = [], selectedDriverId = null, selectedCourseId = null;
+let realtimeChannel = null;
+
+// ════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('l-email').value.trim();
+  const pwd   = document.getElementById('l-pwd').value;
+  const err   = document.getElementById('login-err');
+  err.style.display = 'none';
+
+  // Vérification simple (en prod → Supabase Auth avec role admin)
+  if(email !== ADMIN_EMAIL || pwd !== ADMIN_PASSWORD) {
+    err.textContent = '❌ Identifiants incorrects'; err.style.display = 'block'; return;
+  }
+  document.getElementById('page-login').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  localStorage.setItem('ud_admin_logged', '1');
+  await loadAll();
+  subscribeRealtime();
+}
+
+function doLogout() {
+  localStorage.removeItem('ud_admin_logged');
+  location.reload();
+}
+
+// ════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════
+const pageTitles = {dashboard:'Tableau de bord',courses:'Courses',chauffeurs:'Chauffeurs',stats:'Statistiques',historique:'Historique',gps:'Suivi GPS',parametres:'Paramètres'};
+
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  document.getElementById('topbar-title').textContent = pageTitles[name] || name;
+}
+
+// ════════════════════════════════════════
+// DATA LOADING
+// ════════════════════════════════════════
+
+// ════════════════════════════════════════
+// PARAMÈTRES
+// ════════════════════════════════════════
+
+async function loadSettings() {
+  try {
+    const { data } = await _sb.from('settings').select('*');
+    if(!data) return;
+    data.forEach(row => {
+      if(row.key === 'wa_number') {
+        document.getElementById('set-wa-number').value = row.value;
+        document.getElementById('set-wa-preview').value = 'https://wa.me/' + row.value;
+      }
+      if(row.key === 'moto_base')    document.getElementById('set-moto-base').value = row.value;
+      if(row.key === 'moto_km')      document.getElementById('set-moto-km').value = row.value;
+      if(row.key === 'fourgon_base') document.getElementById('set-fourgon-base').value = row.value;
+      if(row.key === 'fourgon_km')   document.getElementById('set-fourgon-km').value = row.value;
+      if(row.key === 'camion_base')  document.getElementById('set-camion-base').value = row.value;
+      if(row.key === 'camion_km')    document.getElementById('set-camion-km').value = row.value;
+      if(row.key === 'gv_base')      document.getElementById('set-gv-base').value = row.value;
+      if(row.key === 'gv_km')        document.getElementById('set-gv-km').value = row.value;
+      if(row.key === 'express_pct')  document.getElementById('set-express-pct').value = row.value;
+      if(row.key === 'commission')   {
+        document.getElementById('set-commission').value = row.value;
+        updateCommissionPreview(row.value);
+      }
+    });
+  } catch(e) { console.warn('Settings not loaded:', e); }
+}
+
+async function upsertSetting(key, value) {
+  await _sb.from('settings').upsert({ key, value: String(value) }, { onConflict: 'key' });
+}
+
+async function saveWhatsApp() {
+  const num = document.getElementById('set-wa-number').value.trim().replace(/\D/g,'');
+  if(!num) { showToast('⚠️ Numéro invalide', 'error'); return; }
+  await upsertSetting('wa_number', num);
+  document.getElementById('set-wa-preview').value = 'https://wa.me/' + num;
+  showToast('✅ Numéro WhatsApp mis à jour', 'success');
+}
+
+async function saveTarifs() {
+  await Promise.all([
+    upsertSetting('moto_base',    document.getElementById('set-moto-base').value),
+    upsertSetting('moto_km',      document.getElementById('set-moto-km').value),
+    upsertSetting('fourgon_base', document.getElementById('set-fourgon-base').value),
+    upsertSetting('fourgon_km',   document.getElementById('set-fourgon-km').value),
+    upsertSetting('camion_base',  document.getElementById('set-camion-base').value),
+    upsertSetting('camion_km',    document.getElementById('set-camion-km').value),
+    upsertSetting('gv_base',      document.getElementById('set-gv-base').value),
+    upsertSetting('gv_km',        document.getElementById('set-gv-km').value),
+  ]);
+  showToast('✅ Tarifs mis à jour — rechargez le site client', 'success');
+}
+
+async function saveExpress() {
+  await upsertSetting('express_pct', document.getElementById('set-express-pct').value);
+  showToast('✅ Majoration Express mise à jour', 'success');
+}
+
+async function saveCommission() {
+  const val = document.getElementById('set-commission').value;
+  await upsertSetting('commission', val);
+  updateCommissionPreview(val);
+  showToast('✅ Commission mise à jour', 'success');
+}
+
+function updateCommissionPreview(pct) {
+  const p = parseFloat(pct)/100;
+  const inp = document.getElementById('set-commission-preview');
+  if(inp) inp.value = 'Chauffeur: ' + (30*p).toFixed(2) + '€ · UrbanDrop: ' + (30*(1-p)).toFixed(2) + '€';
+}
+
+// Listener pour preview commission en temps réel
+document.addEventListener('DOMContentLoaded', function() {
+  const commInput = document.getElementById('set-commission');
+  if(commInput) commInput.addEventListener('input', function(){ updateCommissionPreview(this.value); });
+  const waInput = document.getElementById('set-wa-number');
+  if(waInput) waInput.addEventListener('input', function(){
+    document.getElementById('set-wa-preview').value = 'https://wa.me/' + this.value.replace(/\D/g,'');
+  });
+});
+
+async function loadAll() {
+  await Promise.all([loadCourses(), loadDrivers(), loadSettings()]);
+  renderDashboard();
+  renderCourses();
+  renderDrivers();
+  renderStats();
+  renderHistory();
+}
+
+async function loadCourses() {
+  const { data } = await _sb.from('courses').select('*').order('created_at', { ascending: false }).limit(200);
+  allCourses = data || [];
+}
+
+async function loadDrivers() {
+  const { data } = await _sb.from('chauffeurs').select('*').order('created_at', { ascending: false });
+  allDrivers = data || [];
+}
+
+// ════════════════════════════════════════
+// REALTIME
+// ════════════════════════════════════════
+function subscribeRealtime() {
+  realtimeChannel = _sb.channel('admin-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, async () => {
+      await loadCourses();
+      renderDashboard(); renderCourses(); renderStats(); renderHistory();
+      showToast('🔔 Nouvelle activité sur les courses', 'info');
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'chauffeurs' }, async () => {
+      await loadDrivers();
+      renderDashboard(); renderDrivers(); renderStats();
+    })
+    .subscribe();
+}
+
+// ════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════
+function renderDashboard() {
+  const today = new Date().toDateString();
+  const todayCourses = allCourses.filter(c => new Date(c.created_at).toDateString() === today);
+  const todayRevenue = todayCourses.filter(c => c.stripe_payment_status === 'paid').reduce((s,c) => s + (c.prix_total||0), 0);
+  const pending = allCourses.filter(c => c.statut === 'en_attente' || c.statut === 'proposee');
+  const online  = allDrivers.filter(d => d.en_ligne);
+
+  document.getElementById('kpi-today').textContent = todayCourses.length;
+  document.getElementById('kpi-today-sub').textContent = todayCourses.filter(c=>c.statut==='livree').length + ' livrées';
+  document.getElementById('kpi-revenue').textContent = todayRevenue.toFixed(0) + '€';
+  document.getElementById('kpi-revenue-sub').textContent = 'Marge 25%: ' + (todayRevenue*0.25).toFixed(0) + '€';
+  document.getElementById('kpi-pending').textContent = pending.length;
+  document.getElementById('kpi-online').textContent = online.length;
+
+  // Badge nav
+  document.getElementById('badge-pending').textContent = pending.length;
+  document.getElementById('badge-drivers').textContent = allDrivers.length;
+
+  // Table courses en attente
+  const tbody = document.getElementById('pending-table');
+  if(!pending.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px;">✅ Aucune course en attente</td></tr>';
+  } else {
+    tbody.innerHTML = pending.slice(0,5).map(c => `
+      <tr>
+        <td class="td-ref">${c.reference||'—'}</td>
+        <td class="td-addr">${c.adresse_depart||'—'}</td>
+        <td class="td-addr">${c.adresse_arrivee||'—'}</td>
+        <td>${vehiculeLabel(c.vehicule)}</td>
+        <td class="td-price">${c.prix_total||0}€</td>
+        <td><span class="badge ${c.statut}">${statutLabel(c.statut)}</span></td>
+        <td><button class="btn-action teal" onclick="openAssignModal('${c.id}')">Attribuer</button></td>
+      </tr>
+    `).join('');
+  }
+
+  // Chauffeurs en ligne
+  const onlineTbody = document.getElementById('online-table');
+  if(!online.length) {
+    onlineTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Aucun chauffeur en ligne</td></tr>';
+  } else {
+    onlineTbody.innerHTML = online.map(d => `
+      <tr>
+        <td><strong>${d.prenom} ${d.nom}</strong></td>
+        <td>${vehiculeLabel(d.vehicule)}</td>
+        <td><span class="badge actif">🟢 En ligne</span></td>
+        <td>${d.nb_courses||0}</td>
+        <td>${(d.gains_totaux||0).toFixed(0)}€</td>
+      </tr>
+    `).join('');
+  }
+}
+
+// ════════════════════════════════════════
+// COURSES PAGE
+// ════════════════════════════════════════
+function renderCourses(data) {
+  const list = data || allCourses;
+  const tbody = document.getElementById('courses-table');
+  if(!list.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><div class="empty-icon">📋</div>Aucune course</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(c => {
+    const driver = allDrivers.find(d => d.id === c.chauffeur_id);
+    return `<tr>
+      <td class="td-ref">${c.reference||'—'}</td>
+      <td style="font-size:0.75rem;color:var(--muted);">${new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+      <td class="td-addr">${c.adresse_depart||'—'}</td>
+      <td class="td-addr">${c.adresse_arrivee||'—'}</td>
+      <td>${vehiculeLabel(c.vehicule)}</td>
+      <td style="font-size:0.75rem;">${c.service||'—'}</td>
+      <td class="td-price">${c.prix_total||0}€</td>
+      <td><span class="badge ${c.statut}">${statutLabel(c.statut)}</span></td>
+      <td style="font-size:0.78rem;">${driver ? driver.prenom+' '+driver.nom : '<span style="color:var(--muted)">—</span>'}</td>
+      <td style="display:flex;gap:4px;">
+        ${(c.statut==='en_attente'||c.statut==='proposee') ? `<button class="btn-action teal" onclick="openAssignModal('${c.id}')">Attribuer</button>` : ''}
+        ${c.statut!=='annulee'&&c.statut!=='livree' ? `<button class="btn-action red" onclick="cancelCourse('${c.id}')">Annuler</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterCourses() {
+  const search  = document.getElementById('filter-search').value.toLowerCase();
+  const statut  = document.getElementById('filter-statut').value;
+  const vehicule= document.getElementById('filter-vehicule').value;
+  let list = allCourses;
+  if(search)  list = list.filter(c => (c.reference||'').toLowerCase().includes(search) || (c.adresse_depart||'').toLowerCase().includes(search) || (c.adresse_arrivee||'').toLowerCase().includes(search));
+  if(statut)  list = list.filter(c => c.statut === statut);
+  if(vehicule)list = list.filter(c => c.vehicule === vehicule);
+  renderCourses(list);
+}
+
+async function cancelCourse(id) {
+  if(!confirm('Annuler cette course ?')) return;
+  await _sb.from('courses').update({ statut: 'annulee' }).eq('id', id);
+  await loadCourses(); renderCourses(); renderDashboard();
+  showToast('Course annulée', 'info');
+}
+
+// ════════════════════════════════════════
+// CHAUFFEURS PAGE
+// ════════════════════════════════════════
+function renderDrivers(data) {
+  const list = data || allDrivers;
+  const tbody = document.getElementById('chauffeurs-table');
+  if(!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="empty-icon">🧑‍✈️</div>Aucun chauffeur</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(d => `
+    <tr>
+      <td><strong>${d.prenom} ${d.nom}</strong></td>
+      <td style="font-size:0.75rem;color:var(--muted);">${d.email}<br>${d.telephone||''}</td>
+      <td>${vehiculeLabel(d.vehicule)}</td>
+      <td>${d.en_ligne ? '<span class="badge actif">🟢 Oui</span>' : '<span style="color:var(--muted);font-size:0.78rem;">Non</span>'}</td>
+      <td>${d.nb_courses||0}</td>
+      <td>${(d.gains_totaux||0).toFixed(0)}€</td>
+      <td><span class="badge ${d.statut==='actif'?'actif':d.statut==='suspendu'?'suspendu':'en_attente_val'}">${d.statut==='actif'?'Actif':d.statut==='suspendu'?'Suspendu':'En attente'}</span></td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap;">
+        ${d.statut!=='actif'?`<button class="btn-action green" onclick="updateDriverStatus('${d.id}','actif')">✅ Valider</button>`:''}
+        ${d.statut==='actif'?`<button class="btn-action red" onclick="updateDriverStatus('${d.id}','suspendu')">⛔ Suspendre</button>`:''}
+        ${d.statut==='suspendu'?`<button class="btn-action green" onclick="updateDriverStatus('${d.id}','actif')">Réactiver</button>`:''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterDrivers() {
+  const search = document.getElementById('filter-driver').value.toLowerCase();
+  const statut = document.getElementById('filter-driver-statut').value;
+  let list = allDrivers;
+  if(search) list = list.filter(d => (d.prenom+' '+d.nom).toLowerCase().includes(search) || (d.email||'').includes(search));
+  if(statut) list = list.filter(d => d.statut === statut);
+  renderDrivers(list);
+}
+
+async function updateDriverStatus(id, statut) {
+  await _sb.from('chauffeurs').update({ statut }).eq('id', id);
+  await loadDrivers(); renderDrivers(); renderDashboard();
+  showToast(statut==='actif' ? '✅ Chauffeur activé' : '⛔ Chauffeur suspendu', statut==='actif'?'success':'info');
+}
+
+// ════════════════════════════════════════
+// ASSIGN MODAL
+// ════════════════════════════════════════
+function openAssignModal(courseId) {
+  const course = allCourses.find(c => c.id === courseId);
+  if(!course) return;
+  selectedCourseId = courseId;
+  selectedDriverId = null;
+  document.getElementById('btn-do-assign').disabled = true;
+
+  // Recap course
+  document.getElementById('assign-recap').innerHTML = `
+    <div class="cr-row"><span class="cr-label">Référence</span><span class="cr-val">${course.reference||'—'}</span></div>
+    <div class="cr-row"><span class="cr-label">Départ</span><span class="cr-val" style="max-width:200px;text-align:right;">${course.adresse_depart||'—'}</span></div>
+    <div class="cr-row"><span class="cr-label">Arrivée</span><span class="cr-val" style="max-width:200px;text-align:right;">${course.adresse_arrivee||'—'}</span></div>
+    <div class="cr-row"><span class="cr-label">Véhicule requis</span><span class="cr-val">${vehiculeLabel(course.vehicule)}</span></div>
+    <div class="cr-row"><span class="cr-label">Montant chauffeur</span><span class="cr-val" style="color:var(--teal);">${Math.round((course.prix_total||0)*0.75)}€</span></div>
+  `;
+
+  // Tous les chauffeurs triés : en ligne d'abord
+  const sorted = [...allDrivers].sort((a,b) => {
+    if(a.en_ligne && !b.en_ligne) return -1;
+    if(!a.en_ligne && b.en_ligne) return 1;
+    if(a.statut==='actif' && b.statut!=='actif') return -1;
+    if(a.statut!=='actif' && b.statut==='actif') return 1;
+    return (b.nb_courses||0) - (a.nb_courses||0);
+  });
+  const list = document.getElementById('chauffeur-list');
+  if(!sorted.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;">Aucun chauffeur enregistré</div>';
+  } else {
+    list.innerHTML = sorted.map(d => `
+      <div class="chauffeur-option ${d.statut!=='actif'?'style=opacity:0.7':''}" onclick="selectDriver('${d.id}',this)" data-id="${d.id}">
+        <div class="ch-avatar" style="background:${d.en_ligne?'var(--green)':d.statut==='actif'?'var(--teal)':'var(--muted)'}">
+          ${(d.prenom[0]||'')+(d.nom[0]||'')}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="ch-name">${d.prenom} ${d.nom}</div>
+          <div class="ch-info">${vehiculeLabel(d.vehicule)} · ${d.nb_courses||0} courses</div>
+          <div class="ch-info" style="margin-top:2px;color:${d.statut==='actif'?'var(--green)':d.statut==='suspendu'?'var(--red)':'var(--orange)'}">
+            ${d.statut==='actif'?'✅ Actif':d.statut==='suspendu'?'⛔ Suspendu':'⏳ En attente validation'}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+          <span class="ch-status" style="background:${d.en_ligne?'var(--green-bg)':'var(--bg)'};color:${d.en_ligne?'var(--green)':'var(--muted)'}">
+            ${d.en_ligne?'🟢 En ligne':'⚪ Hors ligne'}
+          </span>
+          ${d.telephone ? `<a href="tel:${d.telephone}" onclick="event.stopPropagation()" 
+            style="font-size:0.7rem;font-weight:700;color:var(--teal);text-decoration:none;padding:3px 8px;border:1px solid rgba(44,181,176,0.3);border-radius:6px;background:var(--teal-light);">
+            📞 Appeler</a>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('assign-modal').classList.add('open');
+}
+
+function filterAssignList() {
+  const q = document.getElementById('assign-search').value.toLowerCase();
+  document.querySelectorAll('#chauffeur-list .chauffeur-option').forEach(el => {
+    const txt = el.textContent.toLowerCase();
+    el.style.display = txt.includes(q) ? '' : 'none';
+  });
+}
+
+function selectDriver(id, el) {
+  document.querySelectorAll('.chauffeur-option').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedDriverId = id;
+  document.getElementById('btn-do-assign').disabled = false;
+}
+
+function closeAssignModal() {
+  document.getElementById('assign-modal').classList.remove('open');
+  selectedCourseId = null; selectedDriverId = null;
+}
+
+async function doAssign() {
+  if(!selectedCourseId || !selectedDriverId) return;
+  const btn = document.getElementById('btn-do-assign');
+  btn.disabled = true; btn.textContent = '⏳…';
+
+  const { error } = await _sb.from('courses').update({
+    chauffeur_id: selectedDriverId,
+    statut: 'acceptee',
+    acceptee_at: new Date().toISOString()
+  }).eq('id', selectedCourseId);
+
+  btn.textContent = 'Attribuer →';
+  if(error) { showToast('❌ Erreur lors de l\'attribution', 'error'); btn.disabled = false; return; }
+
+  closeAssignModal();
+  await loadCourses(); await loadDrivers();
+  renderDashboard(); renderCourses();
+  showToast('✅ Course attribuée avec succès !', 'success');
+}
+
+// ════════════════════════════════════════
+// STATS
+// ════════════════════════════════════════
+function renderStats() {
+  const paid = allCourses.filter(c => c.stripe_payment_status === 'paid' || c.statut === 'livree');
+  const total = paid.reduce((s,c) => s + (c.prix_total||0), 0);
+  const totalDrivers = total * 0.75;
+  const totalUrbanDrop = total * 0.25;
+
+  const today = new Date().toDateString();
+  const week  = new Date(Date.now() - 7*86400000);
+  const month = new Date(); month.setDate(1);
+
+  const todayRev  = paid.filter(c=>new Date(c.created_at).toDateString()===today).reduce((s,c)=>s+(c.prix_total||0),0);
+  const weekRev   = paid.filter(c=>new Date(c.created_at)>=week).reduce((s,c)=>s+(c.prix_total||0),0);
+  const monthRev  = paid.filter(c=>new Date(c.created_at)>=month).reduce((s,c)=>s+(c.prix_total||0),0);
+
+  document.getElementById('stats-revenue-total').textContent = totalUrbanDrop.toFixed(0) + ' €';
+  document.getElementById('stats-rev-today').textContent  = (todayRev*0.25).toFixed(0) + ' €';
+  document.getElementById('stats-rev-week').textContent   = (weekRev*0.25).toFixed(0) + ' €';
+  document.getElementById('stats-rev-month').textContent  = (monthRev*0.25).toFixed(0) + ' €';
+  document.getElementById('stats-rev-drivers').textContent = totalDrivers.toFixed(0) + ' €';
+
+  // Courses par véhicule
+  const vCounts = {};
+  allCourses.forEach(c => { vCounts[c.vehicule] = (vCounts[c.vehicule]||0)+1; });
+  const vMax = Math.max(...Object.values(vCounts), 1);
+  document.getElementById('vehicle-chart').innerHTML = Object.entries(vCounts).map(([v,n]) => `
+    <div class="bar-row">
+      <span class="bar-label">${vehiculeLabel(v).split(' ')[1]||v}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(n/vMax*100).toFixed(0)}%"></div></div>
+      <span class="bar-val">${n}</span>
+    </div>
+  `).join('') || '<div style="color:var(--muted);padding:16px;text-align:center;">Aucune donnée</div>';
+
+  // Courses par statut
+  const sCounts = {};
+  allCourses.forEach(c => { sCounts[c.statut] = (sCounts[c.statut]||0)+1; });
+  const sMax = Math.max(...Object.values(sCounts), 1);
+  document.getElementById('status-chart').innerHTML = Object.entries(sCounts).map(([s,n]) => `
+    <div class="bar-row">
+      <span class="bar-label">${statutLabel(s)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(n/sMax*100).toFixed(0)}%;background:var(--${s==='livree'?'green':s==='annulee'?'red':'teal'})"></div></div>
+      <span class="bar-val">${n}</span>
+    </div>
+  `).join('') || '<div style="color:var(--muted);padding:16px;text-align:center;">Aucune donnée</div>';
+
+  // Top chauffeurs
+  const topDrivers = [...allDrivers].sort((a,b)=>(b.gains_totaux||0)-(a.gains_totaux||0)).slice(0,5);
+  document.getElementById('top-drivers-list').innerHTML = topDrivers.length ?
+    topDrivers.map((d,i) => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--${i===0?'teal':i===1?'navy':'bg2'});color:${i<2?'white':'var(--muted)'};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.78rem;">${i+1}</div>
+        <div style="flex:1;">
+          <div style="font-size:0.83rem;font-weight:700;">${d.prenom} ${d.nom}</div>
+          <div style="font-size:0.7rem;color:var(--muted);">${d.nb_courses||0} courses</div>
+        </div>
+        <div style="font-weight:800;color:var(--teal);">${(d.gains_totaux||0).toFixed(0)}€</div>
+      </div>
+    `).join('') :
+    '<div style="color:var(--muted);text-align:center;padding:24px;">Aucun chauffeur</div>';
+}
+
+// ════════════════════════════════════════
+// HISTORIQUE
+// ════════════════════════════════════════
+function renderHistory(data) {
+  const list = (data || allCourses).filter(c => c.statut === 'livree' || c.statut === 'annulee');
+  const tbody = document.getElementById('history-table');
+  if(!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">Aucune course dans l\'historique</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(c => {
+    const driver = allDrivers.find(d => d.id === c.chauffeur_id);
+    return `<tr>
+      <td class="td-ref">${c.reference||'—'}</td>
+      <td style="font-size:0.75rem;color:var(--muted);">${new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</td>
+      <td style="font-size:0.78rem;">${c.expediteur_nom||'—'}<br><span style="color:var(--muted);">${c.expediteur_tel||''}</span></td>
+      <td><div class="td-addr">📍 ${c.adresse_depart||'—'}</div><div class="td-addr">🏁 ${c.adresse_arrivee||'—'}</div></td>
+      <td>${vehiculeLabel(c.vehicule)}</td>
+      <td class="td-price">${c.prix_total||0}€</td>
+      <td style="font-size:0.78rem;">${driver?driver.prenom+' '+driver.nom:'<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="badge ${c.statut}">${statutLabel(c.statut)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterHistory() {
+  const search = document.getElementById('filter-hist').value.toLowerCase();
+  const statut = document.getElementById('filter-hist-statut').value;
+  let list = allCourses;
+  if(search) list = list.filter(c => (c.reference||'').toLowerCase().includes(search)||(c.adresse_depart||'').toLowerCase().includes(search)||(c.expediteur_nom||'').toLowerCase().includes(search));
+  if(statut) list = list.filter(c => c.statut === statut);
+  renderHistory(list);
+}
+
+// ════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════
+function vehiculeLabel(v) {
+  return {moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'}[v] || v || '—';
+}
+function statutLabel(s) {
+  return {en_attente:'En attente',proposee:'Proposée',acceptee:'Acceptée',en_cours:'En cours',livree:'Livrée',annulee:'Annulée'}[s] || s;
+}
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+
+// ── Toggle password ──
+function togglePwd(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if(!inp) return;
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
+function openForgotModal() {
+  document.getElementById('forgot-modal').classList.add('open');
+  document.getElementById('forgot-email').value = '';
+}
+function closeForgotModal() {
+  document.getElementById('forgot-modal').classList.remove('open');
+}
+async function sendResetEmail() {
+  var email = document.getElementById('forgot-email').value.trim();
+  if(!email) { alert('Entrez votre adresse e-mail.'); return; }
+  var btn = document.querySelector('.btn-forgot-send');
+  btn.textContent = '⏳ Envoi…'; btn.disabled = true;
+  try {
+    if(typeof _sb !== 'undefined' && _sb) {
+      await _sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    }
+    closeForgotModal();
+    alert('✅ E-mail envoyé à ' + email + ' — vérifiez votre boîte mail.');
+  } catch(e) { alert('❌ ' + e.message); }
+  btn.textContent = 'Envoyer le lien'; btn.disabled = false;
+}
+
+
+// ════════════════════════════════════════
+//  GPS ADMIN
+// ════════════════════════════════════════
+let gpsMap = null;
+let gpsMarkers = {};
+let gpsChannel = null;
+let allPositions = [];
+
+function initGPSMap() {
+  if(gpsMap || !document.getElementById('admin-gps-map')) return;
+  if(typeof google === 'undefined') { setTimeout(initGPSMap, 500); return; }
+  gpsMap = new google.maps.Map(document.getElementById('admin-gps-map'), {
+    center: {lat:48.8566, lng:2.3522}, zoom:12,
+    disableDefaultUI:true, zoomControl:true
+  });
+  loadGPSPositions();
+  subscribeGPSRealtime();
+}
+
+async function loadGPSPositions() {
+  const { data } = await _sb.from('positions_chauffeurs').select('*, chauffeurs(prenom,nom,vehicule)');
+  allPositions = data || [];
+  renderGPSMarkers();
+  renderGPSTable();
+}
+
+function renderGPSMarkers() {
+  if(!gpsMap) return;
+  // Supprimer anciens marqueurs
+  Object.values(gpsMarkers).forEach(m => m.setMap(null));
+  gpsMarkers = {};
+
+  allPositions.forEach(pos => {
+    const driver = pos.chauffeurs;
+    if(!driver) return;
+    const icon = {
+      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      scale: 6, strokeColor: '#2CB5B0', strokeWeight: 3,
+      fillColor: '#2CB5B0', fillOpacity: 1,
+      rotation: pos.cap || 0
+    };
+    const marker = new google.maps.Marker({
+      position: {lat: parseFloat(pos.lat), lng: parseFloat(pos.lng)},
+      map: gpsMap, icon,
+      title: driver.prenom + ' ' + driver.nom
+    });
+    const info = new google.maps.InfoWindow({
+      content: `<div class="driver-marker-info">
+        🚗 ${driver.prenom} ${driver.nom}<br>
+        ${pos.vitesse ? pos.vitesse + ' km/h' : 'À l\'arrêt'}<br>
+        <small style="color:#999">${new Date(pos.updated_at).toLocaleTimeString('fr-FR')}</small>
+      </div>`
+    });
+    marker.addListener('click', () => info.open(gpsMap, marker));
+    gpsMarkers[pos.chauffeur_id] = marker;
+  });
+}
+
+function renderGPSTable() {
+  const tbody = document.getElementById('gps-table');
+  if(!tbody) return;
+  if(!allPositions.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Aucun chauffeur avec GPS actif</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allPositions.map(pos => {
+    const d = pos.chauffeurs || {};
+    const age = Math.round((Date.now() - new Date(pos.updated_at)) / 1000);
+    return `<tr>
+      <td><strong>${d.prenom||'?'} ${d.nom||''}</strong></td>
+      <td>${vehiculeLabel(d.vehicule)}</td>
+      <td style="font-size:0.75rem;color:var(--muted);">${pos.lat.toFixed(4)}, ${pos.lng.toFixed(4)}</td>
+      <td>${pos.vitesse ? pos.vitesse+' km/h' : '—'}</td>
+      <td style="font-size:0.75rem;color:${age<30?'var(--green)':'var(--orange)'};">${age < 60 ? age+'s' : Math.floor(age/60)+'min'} ago</td>
+      <td>
+        <button class="btn-action teal" onclick="centerOnDriver('${pos.chauffeur_id}')">📍 Centrer</button>
+        <button class="btn-action" onclick="openAdminChat(null,'${pos.chauffeur_id}')">💬 Chat</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function centerOnDriver(id) {
+  const pos = allPositions.find(p => p.chauffeur_id === id);
+  if(pos && gpsMap) {
+    gpsMap.setCenter({lat: parseFloat(pos.lat), lng: parseFloat(pos.lng)});
+    gpsMap.setZoom(16);
+  }
+}
+
+function subscribeGPSRealtime() {
+  if(gpsChannel) _sb.removeChannel(gpsChannel);
+  gpsChannel = _sb.channel('gps-admin')
+    .on('postgres_changes', {event:'*', schema:'public', table:'positions_chauffeurs'}, () => {
+      loadGPSPositions();
+    })
+    .subscribe();
+}
+
+// Initialiser la carte GPS quand on ouvre la page
+const _origSwitchPage = switchPage;
+window.switchPage = function(name) {
+  _origSwitchPage(name);
+  if(name === 'gps') { setTimeout(initGPSMap, 100); }
+};
+
+// Bouton chat dans tableau courses
+window.openAdminChat = async function(courseId, driverId) {
+  let cid = courseId;
+  if(!cid && driverId) {
+    // Trouver la course active du chauffeur
+    const {data} = await _sb.from('courses').select('id,reference,adresse_depart').eq('chauffeur_id',driverId).in('statut',['acceptee','en_cours']).single();
+    if(data) cid = data.id;
+  }
+  if(!cid) { showToast('⚠️','Aucune course active pour ce chauffeur','error'); return; }
+  adminChatCourseId = cid;
+  document.getElementById('chat-admin-overlay').classList.add('open');
+  const course = allCourses.find(c=>c.id===cid);
+  document.getElementById('chat-admin-title').textContent = '💬 Course ' + (course?.reference||cid.slice(0,8));
+  loadAdminMessages(cid);
+  subscribeAdminChat(cid);
+};
+
+let adminChatCourseId = null;
+let adminChatChannel = null;
+
+async function loadAdminMessages(courseId) {
+  const {data} = await _sb.from('messages').select('*').eq('course_id', courseId).order('created_at',{ascending:true});
+  const el = document.getElementById('chat-admin-msgs');
+  if(!data?.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:0.82rem;">Aucun message</div>';
+    return;
+  }
+  el.innerHTML = (data||[]).map(m => {
+    const isAdmin = m.expediteur === 'admin';
+    const cls = isAdmin ? 'admin-sent' : m.expediteur === 'chauffeur' ? 'from-driver' : 'from-client';
+    const label = m.expediteur === 'chauffeur' ? '🚗 Chauffeur' : m.expediteur === 'client' ? '👤 Client' : '';
+    const time = new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="chat-msg ${cls}">
+      ${!isAdmin?`<div style="font-size:0.65rem;font-weight:700;margin-bottom:3px;opacity:0.7;">${label}</div>`:''}
+      ${m.contenu}
+      <div class="chat-msg-time">${time}</div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendAdminMessage() {
+  const input = document.getElementById('chat-admin-input');
+  const text = input.value.trim();
+  if(!text || !adminChatCourseId) return;
+  input.value = '';
+  await _sb.from('messages').insert({
+    course_id: adminChatCourseId,
+    expediteur: 'admin',
+    contenu: text
+  });
+}
+
+function closeAdminChat() {
+  document.getElementById('chat-admin-overlay').classList.remove('open');
+  if(adminChatChannel) { _sb.removeChannel(adminChatChannel); adminChatChannel = null; }
+}
+
+function subscribeAdminChat(courseId) {
+  if(adminChatChannel) _sb.removeChannel(adminChatChannel);
+  adminChatChannel = _sb.channel('admin-chat-'+courseId)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'messages', filter:'course_id=eq.'+courseId},
+      () => loadAdminMessages(courseId))
+    .subscribe();
+}
+
+// Ajouter bouton chat dans le tableau des courses
+const _origRenderCourses = renderCourses;
+
+if(localStorage.getItem('ud_admin_logged')) {
+  document.getElementById('page-login').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  loadAll().then(subscribeRealtime);
+}
+</script>
+
+<!-- Modal mot de passe oublié -->
+<div class="forgot-overlay" id="forgot-modal">
+  <div class="forgot-box">
+    <h3>🔑 Mot de passe oublié</h3>
+    <p>Entrez votre adresse e-mail, vous recevrez un lien de réinitialisation.</p>
+    <input class="forgot-input" type="email" id="forgot-email" placeholder="votre@email.fr">
+    <div class="forgot-actions">
+      <button class="btn-forgot-cancel" onclick="closeForgotModal()">Annuler</button>
+      <button class="btn-forgot-send" onclick="sendResetEmail()">Envoyer le lien</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Admin Overlay -->
+<div class="chat-admin-overlay" id="chat-admin-overlay">
+  <div class="chat-admin-box">
+    <div class="chat-admin-head">
+      <div class="chat-admin-title" id="chat-admin-title">💬 Messagerie</div>
+      <button style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--muted);" onclick="closeAdminChat()">✕</button>
+    </div>
+    <div class="chat-admin-msgs" id="chat-admin-msgs"></div>
+    <div class="chat-admin-input-wrap">
+      <input class="chat-admin-input" id="chat-admin-input" placeholder="Message au chauffeur/client…" onkeydown="if(event.key==='Enter')sendAdminMessage()">
+      <button class="btn-chat-send" onclick="sendAdminMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGZlLmPBORB0tuJZPJAP0Zr5BKZ23ZHOM&loading=async" async defer></script>
+</body>
+</html>
