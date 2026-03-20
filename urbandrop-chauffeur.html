@@ -712,6 +712,11 @@ window._submitLogin = async function() {
     const stored = loadDriver();
     if(stored && stored.email === email) {
       currentDriver = stored;
+      // Rafraîchir _dbId si manquant
+      if(!currentDriver._dbId && _sb) {
+        const { data: p } = await _sb.from('chauffeurs').select('id,auth_user_id').eq('email', email).single();
+        if(p) { currentDriver._dbId = p.id; currentDriver._supaId = p.auth_user_id; saveDriver(currentDriver); }
+      }
     } else {
       // Charger profil depuis Supabase
       const { data: profile } = await _sb.from('chauffeurs').select('*').eq('email', email).single();
@@ -725,6 +730,8 @@ window._submitLogin = async function() {
         createdAt: profile?.created_at || new Date().toISOString(),
         totalRides: profile?.nb_courses || 0,
         totalEarnings: profile?.gains_totaux || 0,
+        _dbId: profile?.id || null,
+        _supaId: profile?.auth_user_id || null,
       };
       saveDriver(currentDriver);
     }
@@ -1043,6 +1050,15 @@ function renderCourseDetail() {
 async function acceptCourse() {
   if(!selectedCourse) return;
   try {
+    // Mettre à jour en base Supabase
+    if(_sb && selectedCourse._dbId) {
+      const { error } = await _sb.from('courses').update({
+        statut: 'acceptee',
+        chauffeur_id: currentDriver._dbId || null,
+        acceptee_at: new Date().toISOString()
+      }).eq('id', selectedCourse._dbId);
+      if(error) console.warn('Accept DB error:', error);
+    }
     if(selectedCourse._dbId) await acceptCourseDB(selectedCourse._dbId);
   } catch(e) { showToast('❌','Course déjà prise par un autre chauffeur','error'); refuseCourse(); return; }
   selectedCourse.status = 'accepte';
@@ -1064,6 +1080,13 @@ function refuseCourse() {
 
 async function completeCourse() {
   if(!selectedCourse) return;
+  // Mettre à jour statut en DB
+  if(_sb && selectedCourse._dbId) {
+    await _sb.from('courses').update({
+      statut: 'livree',
+      livree_at: new Date().toISOString()
+    }).eq('id', selectedCourse._dbId).then(()=>{});
+  }
   const c = selectedCourse;
   if(c._dbId) await completeCourseDB(c._dbId).catch(()=>{});
   c.status = 'terminé';
@@ -1345,6 +1368,73 @@ function updateChatBadge() {
   if(!badge) return;
   badge.textContent = unreadCount;
   badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+}
+
+// ════════════════════════════════════════
+//  COURSES DEPUIS SUPABASE (temps réel)
+// ════════════════════════════════════════
+
+async function fetchCoursesFromDB() {
+  if(!_sb || !currentDriver) return;
+  try {
+    // Chercher les courses en attente OU attribuées à ce chauffeur
+    const driverId = currentDriver._dbId;
+    let query = _sb.from('courses')
+      .select('*')
+      .in('statut', ['en_attente', 'acceptee', 'en_cours'])
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    const { data, error } = await query;
+    if(error) { console.warn('fetchCourses error:', error); return; }
+
+    // Mapper les courses DB vers le format local
+    activeCourses = (data || []).map(c => ({
+      _dbId:    c.id,
+      ref:      c.reference || c.id.slice(0,8).toUpperCase(),
+      dep:      c.adresse_depart || '—',
+      arr:      c.adresse_arrivee || '—',
+      depName:  c.expediteur_nom || '—',
+      depPhone: c.expediteur_tel || '—',
+      arrName:  c.destinataire_nom || '—',
+      arrPhone: c.destinataire_tel || '—',
+      dist:     c.distance_km || 0,
+      price:    c.prix_total || 0,
+      service:  c.service || 'standard',
+      vehicule: c.vehicule || '—',
+      note:     c.note_livreur || '',
+      status:   c.statut === 'en_attente' ? 'nouveau' :
+                c.statut === 'acceptee'   ? 'accepte' :
+                c.statut === 'en_cours'   ? 'en-cours' : c.statut,
+      chauffeur_id: c.chauffeur_id,
+      countdown: 30,
+      createdAt: c.created_at
+    })).filter(c => {
+      // Montrer: courses en attente (sans chauffeur) OU courses de CE chauffeur
+      return !c.chauffeur_id || c.chauffeur_id === currentDriver._dbId;
+    });
+
+    renderCourseList();
+  } catch(e) { console.error('fetchCourses:', e); }
+}
+
+function subscribeRealtimeCourses() {
+  if(_realtimeChannel) { _sb?.removeChannel(_realtimeChannel); _realtimeChannel = null; }
+  if(!_sb) return;
+
+  // Charger les courses initiales
+  fetchCoursesFromDB();
+
+  // S'abonner aux changements en temps réel
+  _realtimeChannel = _sb.channel('courses-driver')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'courses'
+    }, (payload) => {
+      fetchCoursesFromDB();
+    })
+    .subscribe();
 }
 
 // ── Init ──
