@@ -662,10 +662,28 @@ window._submitRegister = async function() {
           iban: document.getElementById('r-iban').value.trim() || null,
           banque: document.getElementById('r-banque').value.trim() || null,
           bic: document.getElementById('r-bic').value.trim() || null,
-          statut: 'en_attente'
+          statut: 'en_attente',
+          en_ligne: false,
+          nb_courses: 0,
+          gains_totaux: 0
         });
-        if(dbErr) console.warn('DB insert error:', dbErr);
+        if(dbErr) console.error('DB insert error:', dbErr.message);
       }
+    }
+    // Insérer même sans supaId si pas encore fait
+    if(!supaId && _sb) {
+      const { error: dbErr2 } = await _sb.from('chauffeurs').upsert({
+        prenom, nom, email, telephone: tel,
+        vehicule: vehicle,
+        iban: document.getElementById('r-iban').value.trim() || null,
+        banque: document.getElementById('r-banque').value.trim() || null,
+        bic: document.getElementById('r-bic').value.trim() || null,
+        statut: 'en_attente',
+        en_ligne: false,
+        nb_courses: 0,
+        gains_totaux: 0
+      }, { onConflict: 'email' });
+      if(dbErr2) console.error('DB upsert error:', dbErr2.message);
     }
 
     const driver = {
