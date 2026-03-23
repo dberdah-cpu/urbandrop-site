@@ -284,11 +284,20 @@ input:checked + .toggle-slider:before { transform:translateX(30px); }
   .chat-input { flex:1; padding:10px 16px; border:1.5px solid #e0e6ed; border-radius:50px; font-family:'Plus Jakarta Sans',sans-serif; font-size:0.85rem; outline:none; background:#f8fafc; }
   .chat-input:focus { border-color:var(--teal); background:white; }
   .btn-send { width:40px; height:40px; border-radius:50%; background:var(--teal); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0; }
-  .chat-fab { position:fixed; bottom:90px; right:20px; width:54px; height:54px; border-radius:50%; background:var(--teal); border:none; cursor:pointer; font-size:1.4rem; box-shadow:0 4px 20px rgba(44,181,176,0.45); z-index:200; display:none; }
+  .chat-fab { position:fixed; bottom:100px; right:20px; width:54px; height:54px; border-radius:50%; background:var(--teal); border:none; cursor:pointer; font-size:1.4rem; box-shadow:0 4px 20px rgba(44,181,176,0.45); z-index:1000; display:none; }
   .chat-fab.visible { display:flex; align-items:center; justify-content:center; }
   .chat-fab-badge { position:absolute; top:-3px; right:-3px; width:20px; height:20px; border-radius:50%; background:#ef4444; color:white; font-size:0.62rem; font-weight:800; display:flex; align-items:center; justify-content:center; border:2px solid white; }
   .chat-empty { text-align:center; color:var(--muted); font-size:0.82rem; padding:40px 20px; }
 
+  .forgot-overlay { display:none; position:fixed; inset:0; background:rgba(10,25,35,0.5); z-index:9000; align-items:center; justify-content:center; padding:20px; }
+  .forgot-overlay.open { display:flex; }
+  .forgot-box { background:white; border-radius:20px; padding:28px; width:100%; max-width:380px; }
+  .forgot-box h3 { font-size:1rem; font-weight:800; color:var(--navy); margin-bottom:6px; }
+  .forgot-box p { font-size:0.82rem; color:var(--muted); margin-bottom:18px; }
+  .forgot-input { width:100%; padding:12px 16px; border:1.5px solid var(--border); border-radius:12px; font-family:"Plus Jakarta Sans",sans-serif; font-size:0.9rem; outline:none; margin-bottom:14px; }
+  .forgot-actions { display:flex; gap:8px; }
+  .btn-forgot-cancel { flex:1; padding:12px; background:none; border:1.5px solid var(--border); border-radius:10px; font-family:"Plus Jakarta Sans",sans-serif; font-weight:700; cursor:pointer; }
+  .btn-forgot-send { flex:2; padding:12px; background:var(--teal); border:none; border-radius:10px; font-family:"Plus Jakarta Sans",sans-serif; font-weight:800; cursor:pointer; color:white; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -591,6 +600,11 @@ function logout() { if(window._logout) window._logout(); else { localStorage.rem
     </div>
   </nav>
 
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-fab" onclick="openChat()">
+  💬
+  <span class="chat-fab-badge" id="chat-badge" style="display:none">0</span>
+</button>
 </div><!-- /view-dashboard -->
 
 <script>
@@ -1548,7 +1562,7 @@ if(saved) {
 </script>
 
 <!-- Modal mot de passe oublié -->
-<div class="forgot-overlay" id="forgot-modal">
+<div class="forgot-overlay" id="forgot-modal" style="display:none;">
   <div class="forgot-box">
     <h3>🔑 Mot de passe oublié</h3>
     <p>Entrez votre adresse e-mail, vous recevrez un lien de réinitialisation.</p>
@@ -1583,11 +1597,7 @@ if(saved) {
   </div>
 </div>
 
-<!-- Chat FAB -->
-<button class="chat-fab" id="chat-fab" onclick="openChat()">
-  💬
-  <span class="chat-fab-badge" id="chat-badge" style="display:none">0</span>
-</button>
+
 
 </body>
 </html>
