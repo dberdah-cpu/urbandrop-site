@@ -1075,6 +1075,17 @@ function renderCourseDetail() {
         <button class="btn-complete" onclick="completeCourse()">🏁 Marquer comme livré</button>
       ` : ''}
     </div>
+    ${isActive ? `
+    <div style="margin-top:10px;padding:10px 14px;background:rgba(44,181,176,0.08);border-radius:10px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:0.78rem;font-weight:700;color:var(--navy);" id="gps-status-label">
+        <span id="gps-dot-inline" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;"></span>
+        GPS inactif
+      </span>
+      <button onclick="toggleGPSManual()" id="btn-gps-manual"
+        style="padding:6px 14px;border-radius:8px;border:none;background:var(--green);color:white;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.75rem;font-weight:700;cursor:pointer;">
+        📍 Activer GPS
+      </button>
+    </div>` : ''}
   `;
 }
 
@@ -1100,11 +1111,13 @@ async function acceptCourse() {
   updateStats();
   // Démarrer GPS
   currentCourseId = selectedCourse._dbId || null;
-  console.log('Starting GPS for course:', currentCourseId);
-  startGPS();
+  console.log('Starting GPS for course:', currentCourseId, 'driver._dbId:', currentDriver?._dbId);
   // Afficher FAB chat
   const fab = document.getElementById('chat-fab');
   if(fab) fab.classList.add('visible');
+  chatCourseId = selectedCourse._dbId || null;
+  // GPS: demander permission
+  renderCourseDetail(); // re-render pour afficher le bouton GPS
 }
 
 function refuseCourse() {
@@ -1308,7 +1321,8 @@ let unreadCount = 0;
 
 function openChat() {
   if(!selectedCourse) { showToast('⚠️','Acceptez une course d\'abord','error'); return; }
-  chatCourseId = selectedCourse._dbId || null;
+  chatCourseId = selectedCourse._dbId || selectedCourse._id || null;
+  console.log('openChat courseId:', chatCourseId, 'selectedCourse:', selectedCourse);
   document.getElementById('chat-overlay').classList.add('open');
   document.getElementById('chat-name').textContent = selectedCourse.depName || 'Client';
   document.getElementById('chat-avatar').textContent = (selectedCourse.depName||'C')[0].toUpperCase();
@@ -1460,6 +1474,22 @@ function subscribeRealtimeCourses() {
       fetchCoursesFromDB();
     })
     .subscribe();
+}
+
+function toggleGPSManual() {
+  if(gpsActive) {
+    stopGPS();
+    document.getElementById('gps-dot-inline').style.background = 'var(--muted)';
+    document.getElementById('gps-status-label').childNodes[1] && (document.getElementById('gps-status-label').lastChild.textContent = ' GPS inactif');
+    document.getElementById('btn-gps-manual').textContent = '📍 Activer GPS';
+    document.getElementById('btn-gps-manual').style.background = 'var(--green)';
+  } else {
+    currentCourseId = selectedCourse?._dbId || null;
+    startGPS();
+    document.getElementById('gps-dot-inline').style.background = 'var(--green)';
+    document.getElementById('btn-gps-manual').textContent = '🔴 Désactiver GPS';
+    document.getElementById('btn-gps-manual').style.background = 'var(--red)';
+  }
 }
 
 // ── Init ──
