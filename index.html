@@ -1792,6 +1792,15 @@ async function saveOrder(o) {
   const vn={moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'};
   const sn={standard:'Standard',express:'Express',programme:'Programmé'};
 
+  // Initialiser _lastRide immédiatement
+  const ref = 'UD-' + Date.now().toString(36).toUpperCase();
+  window._lastRide = { ref, id: null, date: new Date().toISOString(),
+    dep: o.dep, arr: o.arr, depName: o.depName, depPhone: o.depPhone,
+    arrName: o.arrName, arrPhone: o.arrPhone,
+    svc: sn[o.svc]||o.svc, vehicule: vn[o.vehicule]||o.vehicule,
+    dist: o.dist, price: o.base, paiement: selPay||window.selPay, note: o.note||''
+  };
+
   // ── Supabase : sauvegarder la course ──
   if(_sb) {
     try {
@@ -1839,22 +1848,12 @@ async function saveOrder(o) {
   setTimeout(()=>window.open('https://wa.me/'+(window.WA_NUMBER_DYN||WA_NUMBER)+'?text='+waMsg,'_blank'),600);
 
   // ── Sauvegarder dans l'historique ──
-  const ref = 'UD-' + Date.now().toString(36).toUpperCase();
-  const ride = {
-    ref, date: new Date().toISOString(),
-    dep: o.dep, arr: o.arr,
-    depName: o.depName, depPhone: o.depPhone,
-    arrName: o.arrName, arrPhone: o.arrPhone,
-    svc: sn[o.svc]||o.svc, slot: o.slot||null,
-    vehicule: vn[o.vehicule]||o.vehicule,
-    dist: o.dist, price: o.base,
-    paiement: selPay, note: o.note||''
-  };
+  window._lastRide.slot = o.slot || null;
+  const ride = window._lastRide;
   const hist = JSON.parse(localStorage.getItem('ud_history')||'[]');
   hist.unshift(ride);
   if(hist.length > 50) hist.splice(50);
   localStorage.setItem('ud_history', JSON.stringify(hist));
-  window._lastRide = ride;
 }
 
 // ═══════════════════════════════════════
