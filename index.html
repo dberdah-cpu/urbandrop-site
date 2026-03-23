@@ -1716,10 +1716,21 @@ _register('submitOrder', async function() {
     document.getElementById('msuccess').classList.add('show');
     if(window._lastRide) document.getElementById('msuccess-ref').textContent = 'Réf. ' + window._lastRide.ref;
     // Démarrer le suivi GPS
-    if(window._lastRide && window._orderData) {
-      setTimeout(() => startTracking(window._lastRide.id, window._orderData), 1000);
-    }
+    const rideId = window._lastRide?.id;
+    const rideData = window._orderData ? {...window._orderData} : null;
     resetAll();
+    if(rideId && rideData) {
+      setTimeout(() => startTracking(rideId, rideData), 1000);
+    } else {
+      // Afficher quand même le FAB en attendant que Supabase confirme
+      const fab = document.getElementById('tracking-fab');
+      if(fab) fab.classList.add('visible');
+      console.warn('No rideId yet, will retry...');
+      // Réessayer après 2s
+      setTimeout(() => {
+        if(window._lastRide?.id && rideData) startTracking(window._lastRide.id, rideData);
+      }, 3000);
+    }
   } catch(err) {
     btn.disabled=false; btn.textContent='Réessayer';
     alert('❌ Erreur : ' + err.message);
@@ -1800,7 +1811,11 @@ async function saveOrder(o) {
         paiement_mode:    selPay,
         statut:           'en_attente'
       }).select().single();
-      if(courseData) window._lastRide.ref = courseData.reference || window._lastRide.ref;
+      if(courseData) {
+        window._lastRide.ref = courseData.reference || window._lastRide.ref;
+        window._lastRide.id  = courseData.id || null;
+        console.log('Course saved with ID:', courseData.id);
+      }
     } catch(e){ console.warn('Supabase insert error:', e); }
   }
 
@@ -2256,11 +2271,15 @@ let clientChatCourseId = null;
 
 // Appelé après confirmé la commande
 function startTracking(courseId, courseData) {
+  if(!courseId) { console.warn('startTracking: no courseId'); return; }
+  console.log('startTracking:', courseId);
   trackingCourseId = courseId;
   clientChatCourseId = courseId;
   // Afficher le FAB
   const fab = document.getElementById('tracking-fab');
   if(fab) fab.classList.add('visible');
+  // Sauvegarder en localStorage pour survie après reload
+  localStorage.setItem('ud_active_course', JSON.stringify({id: courseId, data: courseData, ts: Date.now()}));
   // Commencer à écouter la position
   subscribeDriverPosition(courseId, courseData);
   subscribeClientChat(courseId);
@@ -2419,6 +2438,24 @@ function subscribeClientChat(courseId) {
     })
     .subscribe();
 }
+
+
+// Restaurer le suivi GPS si une course était en cours
+document.addEventListener('DOMContentLoaded', function() {
+  const saved = localStorage.getItem('ud_active_course');
+  if(saved) {
+    try {
+      const { id, data, ts } = JSON.parse(saved);
+      // Garder pendant 4 heures max
+      if(Date.now() - ts < 4 * 3600 * 1000 && id) {
+        console.log('Restoring tracking for course:', id);
+        startTracking(id, data);
+      } else {
+        localStorage.removeItem('ud_active_course');
+      }
+    } catch(e) { localStorage.removeItem('ud_active_course'); }
+  }
+});
 
 </script>
 
