@@ -1270,30 +1270,50 @@ let gpsWatchId = null;
 let gpsActive = false;
 let currentCourseId = null;
 
+
+async function sendPosition(pos) {
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  const vitesse = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : null;
+  console.log('GPS position:', lat, lng, 'course:', currentCourseId, 'driver:', currentDriver?._dbId);
+  if(_sb && currentDriver?._dbId) {
+    const { error } = await _sb.from('positions_chauffeurs').upsert({
+      chauffeur_id: currentDriver._dbId,
+      course_id: currentCourseId || null,
+      lat, lng, vitesse,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'chauffeur_id' });
+    if(error) console.error('GPS upsert error:', error.message);
+  }
+}
+
 function startGPS() {
   if(!navigator.geolocation) { showToast('❌','GPS non supporté','error'); return; }
   gpsActive = true;
-  gpsWatchId = navigator.geolocation.watchPosition(
+  // Essayer d'abord getCurrentPosition pour débloquer la permission
+  navigator.geolocation.getCurrentPosition(
     async (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const vitesse = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : null;
-
-      // Mettre à jour position en base Supabase
-      if(_sb && currentDriver) {
-        const driverId = currentDriver._dbId || null;
-        if(driverId) {
-          await _sb.from('positions_chauffeurs').upsert({
-            chauffeur_id: driverId,
-            course_id: currentCourseId,
-            lat, lng, vitesse,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'chauffeur_id' });
-        }
+      await sendPosition(pos);
+      // Puis watchPosition pour le suivi continu
+      gpsWatchId = navigator.geolocation.watchPosition(
+        async (pos) => { await sendPosition(pos); },
+        (err) => { console.warn('GPS watch error:', err.message); },
+        { enableHighAccuracy: false, maximumAge: 10000, timeout: 30000 }
+      );
+    },
+    (err) => {
+      console.warn('GPS error:', err.message, 'code:', err.code);
+      if(err.code === 1) showToast('🚫','GPS refusé — autorisez la localisation dans votre navigateur','error');
+      else if(err.code === 3) {
+        // Timeout - réessayer sans haute précision
+        gpsWatchId = navigator.geolocation.watchPosition(
+          async (pos) => { await sendPosition(pos); },
+          (err2) => { console.warn('GPS fallback error:', err2.message); },
+          { enableHighAccuracy: false, maximumAge: 30000, timeout: 60000 }
+        );
       }
     },
-    (err) => { console.warn('GPS error:', err); },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
   );
   showToast('📍','GPS activé — position partagée','success');
 }
