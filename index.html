@@ -550,6 +550,23 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 })();
 </script>
+<script>
+function togglePwd(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if(!inp) return;
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+}
+function openForgotModal() {
+  var m = document.getElementById('forgot-modal');
+  if(m) { m.classList.add('open'); document.getElementById('forgot-email').value=''; }
+}
+function closeForgotModal() {
+  var m = document.getElementById('forgot-modal');
+  if(m) m.classList.remove('open');
+}
+</script>
 </head>
 
 <!-- Google Maps PAC dropdown style override -->
