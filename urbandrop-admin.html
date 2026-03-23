@@ -1262,7 +1262,7 @@ window.openAdminChat = async function(courseId, driverId) {
   let cid = courseId;
   if(!cid && driverId) {
     // Trouver la course active du chauffeur
-    const {data} = await _sb.from('courses').select('id,reference,adresse_depart').eq('chauffeur_id',driverId).in('statut',['acceptee','en_cours']).single();
+    const {data} = await _sb.from('courses').select('id,reference,adresse_depart').eq('chauffeur_id',driverId).in('statut',['acceptee','en_cours']).limit(1).maybeSingle();
     if(data) cid = data.id;
   }
   if(!cid) { showToast('⚠️','Aucune course active pour ce chauffeur','error'); return; }
