@@ -1098,6 +1098,13 @@ async function acceptCourse() {
   renderCourseDetail();
   showToast('✅','Course acceptée ! Rendez-vous au départ.','success');
   updateStats();
+  // Démarrer GPS
+  currentCourseId = selectedCourse._dbId || null;
+  console.log('Starting GPS for course:', currentCourseId);
+  startGPS();
+  // Afficher FAB chat
+  const fab = document.getElementById('chat-fab');
+  if(fab) fab.classList.add('visible');
 }
 
 function refuseCourse() {
@@ -1138,6 +1145,12 @@ async function completeCourse() {
   updateStats();
   renderEarningsHistory();
   showToast('🎉','Livraison effectuée ! +'+net(c.price)+'€ encaissés','success');
+  // Arrêter GPS
+  stopGPS();
+  currentCourseId = null;
+  var fabChat = document.getElementById('chat-fab');
+  if(fabChat) fabChat.classList.remove('visible');
+  if(typeof closeChatRealtime === 'function') closeChatRealtime();
 }
 
 // ── Stats ──
@@ -1282,29 +1295,9 @@ function stopGPS() {
   showToast('📍','GPS désactivé','info');
 }
 
-// Démarrer GPS automatiquement quand une course est acceptée
-const _origAccept = window.acceptCourse;
-window.acceptCourse = async function() {
-  await _origAccept();
-  if(selectedCourse) {
-    currentCourseId = selectedCourse._dbId || null;
-    startGPS();
-    // Afficher le FAB chat
-    const fab = document.getElementById('chat-fab');
-    if(fab) fab.classList.add('visible');
-  }
-};
+// GPS démarré directement dans acceptCourse
 
-// Arrêter GPS quand livraison terminée
-const _origComplete = window.completeCourse;
-window.completeCourse = async function() {
-  await _origComplete();
-  stopGPS();
-  currentCourseId = null;
-  const fab = document.getElementById('chat-fab');
-  if(fab) fab.classList.remove('visible');
-  closeChatRealtime();
-};
+// GPS arrêté directement dans completeCourse
 
 // ════════════════════════════════════════
 //  MESSAGERIE TEMPS RÉEL
