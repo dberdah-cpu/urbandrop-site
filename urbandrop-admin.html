@@ -724,13 +724,20 @@ async function loadAll() {
 }
 
 async function loadCourses() {
-  const { data } = await _sb.from('courses').select('*').order('created_at', { ascending: false }).limit(200);
+  const { data, error } = await _sb
+    .from('courses')
+    .select('*, chauffeur:chauffeurs(id, prenom, nom, vehicule, telephone)')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if(error) console.error('loadCourses error:', error.message);
   allCourses = data || [];
 }
 
 async function loadDrivers() {
-  const { data } = await _sb.from('chauffeurs').select('*').order('created_at', { ascending: false });
+  const { data, error } = await _sb.from('chauffeurs').select('*').order('created_at', { ascending: false });
+  if(error) console.error('loadDrivers error:', error.message);
   allDrivers = data || [];
+  console.log('Chauffeurs loaded:', allDrivers.length, allDrivers);
 }
 
 // ════════════════════════════════════════
@@ -817,7 +824,7 @@ function renderCourses(data) {
     return;
   }
   tbody.innerHTML = list.map(c => {
-    const driver = allDrivers.find(d => d.id === c.chauffeur_id);
+    const driver = c.chauffeur || allDrivers.find(d => d.id === c.chauffeur_id);
     return `<tr>
       <td class="td-ref">${c.reference||'—'}</td>
       <td style="font-size:0.75rem;color:var(--muted);">${new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
@@ -827,7 +834,7 @@ function renderCourses(data) {
       <td style="font-size:0.75rem;">${c.service||'—'}</td>
       <td class="td-price">${c.prix_total||0}€</td>
       <td><span class="badge ${c.statut}">${statutLabel(c.statut)}</span></td>
-      <td style="font-size:0.78rem;">${driver ? driver.prenom+' '+driver.nom : '<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-size:0.78rem;">${driver ? (driver.prenom+' '+driver.nom) : (c.chauffeur_id ? '⏳ Attribué' : '<span style="color:var(--muted)">—</span>')}</td>
       <td style="display:flex;gap:4px;">
         ${(c.statut==='en_attente'||c.statut==='proposee') ? `<button class="btn-action teal" onclick="openAssignModal('${c.id}')">Attribuer</button>` : ''}
         ${c.statut!=='annulee'&&c.statut!=='livree' ? `<button class="btn-action red" onclick="cancelCourse('${c.id}')">Annuler</button>` : ''}
@@ -1069,7 +1076,7 @@ function renderHistory(data) {
     return;
   }
   tbody.innerHTML = list.map(c => {
-    const driver = allDrivers.find(d => d.id === c.chauffeur_id);
+    const driver = c.chauffeur || allDrivers.find(d => d.id === c.chauffeur_id);
     return `<tr>
       <td class="td-ref">${c.reference||'—'}</td>
       <td style="font-size:0.75rem;color:var(--muted);">${new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</td>
@@ -1077,7 +1084,7 @@ function renderHistory(data) {
       <td><div class="td-addr">📍 ${c.adresse_depart||'—'}</div><div class="td-addr">🏁 ${c.adresse_arrivee||'—'}</div></td>
       <td>${vehiculeLabel(c.vehicule)}</td>
       <td class="td-price">${c.prix_total||0}€</td>
-      <td style="font-size:0.78rem;">${driver?driver.prenom+' '+driver.nom:'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-size:0.78rem;">${driver ? (driver.prenom+' '+driver.nom) : (c.chauffeur_id ? '⏳ Attribué' : '<span style="color:var(--muted)">—</span>')}</td>
       <td><span class="badge ${c.statut}">${statutLabel(c.statut)}</span></td>
     </tr>`;
   }).join('');

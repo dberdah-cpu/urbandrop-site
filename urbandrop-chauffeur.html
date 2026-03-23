@@ -754,6 +754,20 @@ window._submitLogin = async function() {
       saveDriver(currentDriver);
     }
     completedCourses = loadCompleted();
+    // Vérifier le statut du chauffeur
+    if(_sb) {
+      const { data: statusCheck } = await _sb.from('chauffeurs').select('statut').eq('email', email).single();
+      if(statusCheck?.statut === 'en_attente') {
+        showToast('⏳','Votre compte est en attente de validation par l\'administrateur. Vous serez contacté sous 24h.','error');
+        currentDriver = null;
+        return;
+      }
+      if(statusCheck?.statut === 'suspendu') {
+        showToast('🚫','Votre compte a été suspendu. Contactez l\'administrateur.','error');
+        currentDriver = null;
+        return;
+      }
+    }
     enterDashboard();
     showToast('👋','Bon retour '+currentDriver.prenom+' !','success');
   } catch(err) {
