@@ -1059,7 +1059,7 @@ function renderCourseDetail() {
   welcome.style.display = 'none';
 
   const isNew = c.status === 'nouveau';
-  const isActive = c.status === 'accepte' || c.status === 'en-cours';
+  const isActive = c.status === 'accepte' || c.status === 'en-cours' || c.status === 'recupere';
 
   detail.innerHTML = `
     <div class="detail-header">
@@ -1111,9 +1111,14 @@ function renderCourseDetail() {
       ${isNew ? `
         <button class="btn-accept" onclick="acceptCourse()">✅ Accepter la course</button>
         <button class="btn-refuse" onclick="refuseCourse()">✕</button>
-      ` : isActive ? `
-        <button class="btn-complete" onclick="completeCourse()">🏁 Marquer comme livré</button>
+      ` : c.status === 'accepte' ? `
+        <button class="btn-complete" onclick="pickupCourse()" style="background:var(--orange);">📦 Colis récupéré</button>
+      ` : c.status === 'recupere' ? `
+        <button class="btn-complete" onclick="completeCourse()">🏁 Colis livré ✓</button>
       ` : ''}
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+      ${isActive ? `<button onclick="openChat()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--teal);background:white;color:var(--teal);font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.82rem;cursor:pointer;">💬 Messagerie</button>` : ''}
     </div>
     ${isActive ? `
     <div style="margin-top:10px;padding:10px 14px;background:rgba(44,181,176,0.08);border-radius:10px;display:flex;align-items:center;justify-content:space-between;">
@@ -1127,6 +1132,30 @@ function renderCourseDetail() {
       </button>
     </div>` : ''}
   `;
+}
+
+
+async function pickupCourse() {
+  if(!selectedCourse) return;
+  // Mettre à jour statut en DB
+  if(_sb && selectedCourse._dbId) {
+    await _sb.from('courses').update({
+      statut: 'en_cours',
+      pickup_at: new Date().toISOString()
+    }).eq('id', selectedCourse._dbId);
+  }
+  selectedCourse.status = 'recupere';
+  renderCourseList();
+  renderCourseDetail();
+  showToast('📦','Colis récupéré ! En route vers la destination.','success');
+  // Notifier via Supabase message automatique
+  if(_sb && selectedCourse._dbId) {
+    await _sb.from('messages').insert({
+      course_id: selectedCourse._dbId,
+      expediteur: 'chauffeur',
+      contenu: '📦 Votre colis a été récupéré ! Le chauffeur est en route vers vous.'
+    });
+  }
 }
 
 // ── Accept / Refuse / Complete ──
@@ -1198,6 +1227,16 @@ async function completeCourse() {
   updateStats();
   renderEarningsHistory();
   showToast('🎉','Livraison effectuée ! +'+net(c.price)+'€ encaissés','success');
+  // Notifier client
+  if(_sb && c._dbId) {
+    _sb.from('messages').insert({
+      course_id: c._dbId,
+      expediteur: 'chauffeur',
+      contenu: '✅ Votre colis a été livré ! Merci d\'avoir choisi UrbanDrop. 🎉'
+    }).then(()=>{});
+    _sb.from('courses').update({ statut: 'livree', livree_at: new Date().toISOString() })
+      .eq('id', c._dbId).then(()=>{});
+  }
   // Arrêter GPS
   stopGPS();
   currentCourseId = null;

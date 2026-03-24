@@ -741,11 +741,17 @@ function closeForgotModal() {
   .chat-client-input:focus { border-color:var(--teal); }
   .btn-chat-client-send { width:38px; height:38px; border-radius:50%; background:var(--teal); border:none; cursor:pointer; font-size:0.9rem; flex-shrink:0; }
 
-  /* Tracking FAB */
-  .tracking-fab { display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--navy); color:white; border:none; border-radius:50px; padding:12px 24px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.85rem; cursor:pointer; box-shadow:var(--shadow-lg); z-index:1000; align-items:center; gap:10px; transition:all 0.3s; white-space:nowrap; }
-  .tracking-fab.visible { display:flex; }
-  .tracking-fab-dot { width:10px; height:10px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
-  .chat-notif-dot { width:10px; height:10px; border-radius:50%; background:var(--red); display:none; }
+  /* Mini fenêtre livraison en bas */
+  .delivery-bar { display:none; position:fixed; bottom:0; left:0; right:0; z-index:1000; background:var(--navy); color:white; padding:12px 20px; box-shadow:0 -4px 20px rgba(0,0,0,0.2); }
+  .delivery-bar.visible { display:block; }
+  .delivery-bar-inner { max-width:600px; margin:0 auto; display:flex; align-items:center; gap:12px; }
+  .delivery-bar-dot { width:10px; height:10px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+  .delivery-bar-info { flex:1; }
+  .delivery-bar-title { font-size:0.85rem; font-weight:800; }
+  .delivery-bar-status { font-size:0.72rem; color:rgba(255,255,255,0.6); margin-top:1px; }
+  .delivery-bar-btn { padding:8px 16px; background:var(--teal); border:none; border-radius:8px; color:white; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:0.78rem; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .delivery-bar-chat { padding:8px 14px; background:rgba(255,255,255,0.15); border:none; border-radius:8px; color:white; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:0.78rem; cursor:pointer; white-space:nowrap; flex-shrink:0; position:relative; }
+  .chat-notif-dot { position:absolute; top:-4px; right:-4px; width:10px; height:10px; border-radius:50%; background:var(--red); display:none; }
 </style>
 </head>
 <body>
@@ -2433,6 +2439,13 @@ function subscribeClientChat(courseId) {
       if(!document.getElementById('tracking-overlay').classList.contains('open')) {
         const dot = document.getElementById('chat-notif-dot');
         if(dot && payload.new.expediteur !== 'client') dot.style.display = 'block';
+        // Mettre à jour le statut
+        const statusTxt = document.getElementById('delivery-status-txt');
+        if(statusTxt && payload.new.contenu) {
+          if(payload.new.contenu.includes('récupéré')) statusTxt.textContent = '📦 Colis récupéré — en route !';
+          else if(payload.new.contenu.includes('livré')) statusTxt.textContent = '✅ Colis livré !';
+          else statusTxt.textContent = '💬 Nouveau message du chauffeur';
+        }
       }
     })
     .subscribe();
@@ -2509,12 +2522,21 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<!-- Tracking FAB -->
-<button class="tracking-fab" id="tracking-fab" onclick="openTracking()">
-  <span class="tracking-fab-dot"></span>
-  Suivre ma livraison
-  <span class="chat-notif-dot" id="chat-notif-dot"></span>
-</button>
+<!-- Barre de livraison en bas -->
+<div class="delivery-bar" id="tracking-fab">
+  <div class="delivery-bar-inner">
+    <span class="delivery-bar-dot"></span>
+    <div class="delivery-bar-info">
+      <div class="delivery-bar-title">🚗 Livraison en cours</div>
+      <div class="delivery-bar-status" id="delivery-status-txt">Votre chauffeur est en route</div>
+    </div>
+    <button class="delivery-bar-chat" onclick="openTracking()">
+      💬
+      <span class="chat-notif-dot" id="chat-notif-dot"></span>
+    </button>
+    <button class="delivery-bar-btn" onclick="openTracking()">📍 Suivre</button>
+  </div>
+</div>
 
 </body>
 </html>
