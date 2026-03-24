@@ -1171,7 +1171,7 @@ async function acceptCourse() {
       }).eq('id', selectedCourse._dbId);
       if(error) console.warn('Accept DB error:', error);
     }
-    if(selectedCourse._dbId) await acceptCourseDB(selectedCourse._dbId);
+    // acceptCourseDB remplacé par mise à jour directe Supabase ci-dessus
   } catch(e) { showToast('❌','Course déjà prise par un autre chauffeur','error'); refuseCourse(); return; }
   selectedCourse.status = 'accepte';
   renderCourseList();
@@ -1209,7 +1209,7 @@ async function completeCourse() {
     }).eq('id', selectedCourse._dbId).then(()=>{});
   }
   const c = selectedCourse;
-  if(c._dbId) await completeCourseDB(c._dbId).catch(()=>{});
+  // completeCourseDB remplacé par mise à jour directe Supabase ci-dessus
   c.status = 'terminé';
   c.completedAt = new Date().toISOString();
   completedCourses.unshift(c);
