@@ -2280,14 +2280,76 @@ function startTracking(courseId, courseData) {
   console.log('startTracking:', courseId);
   trackingCourseId = courseId;
   clientChatCourseId = courseId;
-  // Afficher le FAB
-  const fab = document.getElementById('tracking-fab');
-  if(fab) fab.classList.add('visible');
-  // Sauvegarder en localStorage pour survie après reload
+  // Sauvegarder en localStorage
   localStorage.setItem('ud_active_course', JSON.stringify({id: courseId, data: courseData, ts: Date.now()}));
-  // Commencer à écouter la position
-  subscribeDriverPosition(courseId, courseData);
+  // Écouter le statut de la course pour afficher le suivi dès que le chauffeur accepte
+  subscribeCourseStatus(courseId, courseData);
   subscribeClientChat(courseId);
+}
+
+function subscribeCourseStatus(courseId, courseData) {
+  if(!_sb) return;
+  // Vérifier le statut actuel
+  _sb.from('courses').select('statut, chauffeur_id, chauffeurs(prenom, nom, vehicule)')
+    .eq('id', courseId).single()
+    .then(({data}) => {
+      if(data && (data.statut === 'acceptee' || data.statut === 'en_cours' || data.statut === 'livree')) {
+        showDeliveryBar(data);
+        if(data.statut !== 'livree') subscribeDriverPosition(courseId, courseData);
+      } else {
+        // Course pas encore acceptée - afficher barre d'attente
+        const fab = document.getElementById('tracking-fab');
+        if(fab) {
+          fab.classList.add('visible');
+          const title = fab.querySelector('.delivery-bar-title');
+          if(title) title.textContent = '⏳ En attente d\'un chauffeur…';
+          const st = document.getElementById('delivery-status-txt');
+          if(st) st.textContent = 'Votre commande est confirmée';
+        }
+      }
+    });
+
+  // Écouter les changements de statut
+  if(window._courseStatusChannel) _sb.removeChannel(window._courseStatusChannel);
+  window._courseStatusChannel = _sb.channel('course-status-'+courseId)
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'courses',
+      filter: 'id=eq.'+courseId
+    }, ({new: course}) => {
+      showDeliveryBar(course);
+      if(course.statut === 'acceptee' || course.statut === 'en_cours') {
+        subscribeDriverPosition(courseId, courseData);
+      }
+    })
+    .subscribe();
+}
+
+function showDeliveryBar(course) {
+  const fab = document.getElementById('tracking-fab');
+  if(!fab) return;
+  fab.classList.add('visible');
+  fab.style.background = '';
+  const title = fab.querySelector('.delivery-bar-title');
+  const st = document.getElementById('delivery-status-txt');
+  if(course.statut === 'en_attente' || course.statut === 'proposee') {
+    if(title) title.textContent = '⏳ En attente d\'un chauffeur…';
+    if(st) st.textContent = 'Votre commande est confirmée';
+  } else if(course.statut === 'acceptee') {
+    if(title) title.textContent = '🚗 Chauffeur en route vers vous';
+    const driver = course.chauffeurs;
+    if(st) st.textContent = driver ? driver.prenom+' '+driver.nom+' · '+(driver.vehicule||'') : 'Chauffeur assigné';
+    // Démarrer GPS
+    subscribeDriverPosition(trackingCourseId, null);
+  } else if(course.statut === 'en_cours') {
+    if(title) title.textContent = '📦 Colis récupéré — en route !';
+    if(st) st.textContent = 'Votre livraison est en cours';
+  } else if(course.statut === 'livree') {
+    if(title) title.textContent = '✅ Livraison terminée !';
+    if(st) st.textContent = 'Votre colis a été livré avec succès';
+    fab.style.background = 'var(--green)';
+    localStorage.removeItem('ud_active_course');
+    setTimeout(() => { fab.classList.remove('visible'); }, 6000);
+  }
 }
 
 function openTracking() {
