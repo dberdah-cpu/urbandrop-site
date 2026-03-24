@@ -2435,16 +2435,41 @@ function subscribeClientChat(courseId) {
       filter: 'course_id=eq.'+courseId
     }, (payload) => {
       loadClientMessages();
-      // Notif si chat fermé
-      if(!document.getElementById('tracking-overlay').classList.contains('open')) {
-        const dot = document.getElementById('chat-notif-dot');
-        if(dot && payload.new.expediteur !== 'client') dot.style.display = 'block';
-        // Mettre à jour le statut
-        const statusTxt = document.getElementById('delivery-status-txt');
-        if(statusTxt && payload.new.contenu) {
-          if(payload.new.contenu.includes('récupéré')) statusTxt.textContent = '📦 Colis récupéré — en route !';
-          else if(payload.new.contenu.includes('livré')) statusTxt.textContent = '✅ Colis livré !';
-          else statusTxt.textContent = '💬 Nouveau message du chauffeur';
+      const msg = payload.new;
+      const statusTxt = document.getElementById('delivery-status-txt');
+      // Détecter livraison terminée
+      if(msg.contenu && msg.contenu.includes('a été livré')) {
+        // Livraison terminée !
+        if(statusTxt) statusTxt.textContent = '✅ Colis livré avec succès !';
+        localStorage.removeItem('ud_active_course');
+        // Afficher popup de confirmation après 2s
+        setTimeout(() => {
+          const bar = document.getElementById('tracking-fab');
+          if(bar) {
+            bar.style.background = 'var(--green)';
+            bar.querySelector('.delivery-bar-title').textContent = '✅ Livraison terminée !';
+          }
+          // Fermer automatiquement après 5s
+          setTimeout(() => {
+            const bar = document.getElementById('tracking-fab');
+            if(bar) bar.classList.remove('visible');
+            // Fermer la fenêtre de suivi si ouverte
+            const overlay = document.getElementById('tracking-overlay');
+            if(overlay) overlay.classList.remove('open');
+            document.body.style.overflow = '';
+            if(trackingChannel) { _sb?.removeChannel(trackingChannel); trackingChannel = null; }
+            if(clientChatChannel) { _sb?.removeChannel(clientChatChannel); clientChatChannel = null; }
+          }, 5000);
+        }, 500);
+      } else {
+        // Notif si chat fermé
+        if(!document.getElementById('tracking-overlay').classList.contains('open')) {
+          const dot = document.getElementById('chat-notif-dot');
+          if(dot && msg.expediteur !== 'client') dot.style.display = 'block';
+          if(statusTxt && msg.contenu) {
+            if(msg.contenu.includes('récupéré')) statusTxt.textContent = '📦 Colis récupéré — en route !';
+            else statusTxt.textContent = '💬 Nouveau message du chauffeur';
+          }
         }
       }
     })

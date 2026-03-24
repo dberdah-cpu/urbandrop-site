@@ -1227,15 +1227,17 @@ async function completeCourse() {
   updateStats();
   renderEarningsHistory();
   showToast('🎉','Livraison effectuée ! +'+net(c.price)+'€ encaissés','success');
-  // Notifier client
+  // Notifier client + fermer la course
   if(_sb && c._dbId) {
-    _sb.from('messages').insert({
+    await _sb.from('messages').insert({
       course_id: c._dbId,
       expediteur: 'chauffeur',
       contenu: '✅ Votre colis a été livré ! Merci d\'avoir choisi UrbanDrop. 🎉'
-    }).then(()=>{});
-    _sb.from('courses').update({ statut: 'livree', livree_at: new Date().toISOString() })
-      .eq('id', c._dbId).then(()=>{});
+    });
+    await _sb.from('courses').update({
+      statut: 'livree',
+      livree_at: new Date().toISOString()
+    }).eq('id', c._dbId);
   }
   // Arrêter GPS
   stopGPS();
