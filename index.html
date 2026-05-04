@@ -2531,7 +2531,9 @@ function buildHome(){
     +'</div>';
 
   // Cours du jour
-  h += '<div id="cours-card-container">'+buildCoursCard()+'</div>';
+  var _cc = buildCoursCard();
+  console.log('[buildHome] cours-card='+ (_cc?'OK':'VIDE'));
+  h += '<div id="cours-card-container">'+_cc+'</div>';
 
   // Verset du jour
   h+='<div class="card-verset">'
@@ -6446,12 +6448,14 @@ function getCoursKey(paracha, day){
 
 function refreshCoursCard(){
   var card = buildCoursCard();
-  console.log('[Cours] refreshCoursCard — parashaName='+currentParashaName+' card='+(card?'OK':'VIDE'));
+  console.log('[Cours] refreshCoursCard card='+(card?'OK':'VIDE')+' container='+(document.getElementById('cours-card-container')?'EXISTS':'MISSING'));
   var el = document.getElementById('cours-card-container');
   if(el){
     el.innerHTML = card;
-  } else {
-    buildHome();
+  }
+  // Toujours tenter aussi via buildHome pour forcer le refresh complet
+  if(!el || !card){
+    try { buildHome(); } catch(e){}
   }
 }
 
