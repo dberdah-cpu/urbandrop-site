@@ -6457,23 +6457,45 @@ function refreshCoursCard(){
 
 function buildCoursCard(){
   var now = new Date();
-  var jsDay = now.getDay(); // 0=dim,1=lun,...,5=ven,6=sam
-  var courseDay = jsDay === 6 ? -1 : jsDay; // sam=pas de cours
-  // Utiliser le nom Hebcal ou le calendrier hardcodé comme fallback
+  var jsDay = now.getDay();
+  var courseDay = (jsDay===6) ? -1 : jsDay;
+  if(courseDay < 0) return '';
+
+  // Déterminer la paracha par le calendrier hardcodé
   var parashaName = currentParashaName || getParashaFromCalendar() || '';
   var key = getCoursKey(parashaName, courseDay);
-  console.log('[Cours] parashaName='+parashaName+' jsDay='+jsDay+' key='+key);
+  console.log('[COURS] paracha='+parashaName+' day='+courseDay+' key='+key);
+
+  // Fallback par plages de dates si getCoursKey échoue
+  if(!key || !COURS_DATA[key]){
+    var m = now.getMonth(); // 0-indexé
+    var d = now.getDate();
+    var prefix = null;
+    if(m===4 && d>=3  && d<=9)  prefix='behar';
+    if(m===4 && d>=10 && d<=16) prefix='bamidbar';
+    if(m===4 && d>=17 && d<=23) prefix='nasso';
+    if(m===4 && d>=24 || (m===5 && d<=6)) prefix='behalotecha';
+    if(m===5 && d>=7  && d<=13) prefix='shelah';
+    if(m===5 && d>=14 && d<=20) prefix='korah';
+    if(m===5 && d>=21 && d<=27) prefix='choukat';
+    if(m===5 && d>=28 || (m===6 && d<=4)) prefix='balak';
+    if(m===6 && d>=5  && d<=11) prefix='pinhas';
+    if(m===6 && d>=12 && d<=18) prefix='matot';
+    if(m===6 && d>=19 && d<=25) prefix='devarim';
+    if(m===6 && d>=26 || (m===7 && d<=1)) prefix='vaethanan';
+    if(m===7 && d>=2  && d<=8)  prefix='ekev';
+    if(m===7 && d>=9  && d<=15) prefix='reeh';
+    if(m===7 && d>=16 && d<=22) prefix='choftim';
+    if(m===7 && d>=23 && d<=29) prefix='kitavo';
+    if(m===7 && d>=30 || (m===8 && d<=5)) prefix='nitsavim';
+    if(prefix) key = prefix+'-'+courseDay;
+    console.log('[COURS] fallback prefix='+prefix+' key='+key);
+  }
+
   if(!key || !COURS_DATA[key]) return '';
   var c = COURS_DATA[key];
-  return '<div class="cours-card" onclick="openCours(\''+key+'\')">'
-    +'<div class="cours-card-label">📜 Cours du jour · Torah · Rachi · Rabbi</div>'
-    +'<div class="cours-card-titre">'+c.titre+'</div>'
-    +'<div class="cours-card-sous-titre">'+c.sous_titre+'</div>'
-    +'<div class="cours-card-accroche">'+c.accroche+'</div>'
-    +'<div class="cours-card-btn">Lire le cours →</div>'
-    +'</div>';
+  return '<div class="cours-card" onclick="openCours(''+key+'')">'    +'<div class="cours-card-label">📜 Cours du jour · Torah · Rachi · Rabbi</div>'    +'<div class="cours-card-titre">'+c.titre+'</div>'    +'<div class="cours-card-sous-titre">'+c.sous_titre+'</div>'    +'<div class="cours-card-accroche">'+c.accroche+'</div>'    +'<div class="cours-card-btn">Lire le cours →</div>'    +'</div>';
 }
-
 function openCours(key){
   if(!requireLogin()) return;
   if(checkAndBlockShabbat()) return;
