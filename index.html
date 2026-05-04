@@ -6375,7 +6375,10 @@ function getCoursKey(paracha, day){
 }
 
 function buildCoursCard(){
-  var key = getCoursKey();
+  var now = new Date();
+  var jsDay = now.getDay(); // 0=dim,1=lun,...,5=ven,6=sam
+  var courseDay = jsDay === 6 ? -1 : jsDay; // sam=pas de cours
+  var key = getCoursKey(currentParashaName, courseDay);
   if(!key || !COURS_DATA[key]) return '';
   var c = COURS_DATA[key];
   return '<div class="cours-card" onclick="openCours(\''+key+'\')">'
@@ -6405,6 +6408,13 @@ function openCours(key){
   if(!view) return;
   view.style.display = 'block';
   window.scrollTo(0,0);
+  // Swipe droite pour retour
+  var touchStartX = 0;
+  view.ontouchstart = function(e){ touchStartX = e.touches[0].clientX; };
+  view.ontouchend = function(e){
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    if(dx > 80) goHome();
+  };
 
   view.innerHTML = '<div class="cours-view">'
     // Header
