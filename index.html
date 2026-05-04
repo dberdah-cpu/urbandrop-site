@@ -6381,11 +6381,12 @@ function getCoursKey(paracha, day){
 }
 
 function refreshCoursCard(){
+  var card = buildCoursCard();
+  console.log('[Cours] refreshCoursCard — parashaName='+currentParashaName+' card='+(card?'OK':'VIDE'));
   var el = document.getElementById('cours-card-container');
   if(el){
-    el.innerHTML = buildCoursCard();
+    el.innerHTML = card;
   } else {
-    // container pas encore créé — buildHome() le créera
     buildHome();
   }
 }
@@ -6395,6 +6396,7 @@ function buildCoursCard(){
   var jsDay = now.getDay(); // 0=dim,1=lun,...,5=ven,6=sam
   var courseDay = jsDay === 6 ? -1 : jsDay; // sam=pas de cours
   var key = getCoursKey(currentParashaName, courseDay);
+  console.log('[Cours] buildCoursCard parashaName='+currentParashaName+' jsDay='+jsDay+' key='+key+' exists='+(key&&COURS_DATA[key]?'OUI':'NON'));
   if(!key || !COURS_DATA[key]) return '';
   var c = COURS_DATA[key];
   return '<div class="cours-card" onclick="openCours(\''+key+'\')">'
