@@ -1563,7 +1563,7 @@ function loadHebcalAll(lat,lng,cb){
         var mapped=resolveParasha(raw);
         if(mapped){
           currentCID=mapped;
-          if(!currentParashaName) currentParashaName=raw;
+          if(!currentParashaName){ currentParashaName=raw; refreshCoursCard(); }
           console.log('[Sedrot API] '+raw+' → CID '+mapped);
         }
       }
@@ -1588,6 +1588,7 @@ function loadHebcalAll(lat,lng,cb){
             .replace(/h\u0331/g,'h') // h avec macron bas
             .trim();
           currentParashaName=raw;
+          refreshCoursCard();
           currentParashaHeb=it.hebrew||'';
           var mapped=resolveParasha(raw);
           if(mapped){currentCID=mapped; console.log('[Torah] Paracha: '+raw+' → CID '+mapped);}
@@ -2466,7 +2467,7 @@ function buildHome(){
     +'</div>';
 
   // Cours du jour
-  h += buildCoursCard();
+  h += '<div id="cours-card-container">'+buildCoursCard()+'</div>';
 
   // Verset du jour
   h+='<div class="card-verset">'
@@ -6353,8 +6354,13 @@ function getCoursKey(paracha, day){
     'bamidbar':'bamidbar', 'bmidbar':'bamidbar', 'bemidbar':'bamidbar',
     'nasso':'nasso', 'naso':'nasso',
     'behalotecha':'behalotecha', 'behaalotkha':'behalotecha', 'beaalotekha':'behalotecha',
+    'bhalotcha':'behalotecha', 'baalotcha':'behalotecha', 'alotcha':'behalotecha',
     'shelah':'shelah', 'shlah':'shelah', 'chelah':'shelah', 'chela':'shelah',
-    'korah':'korah', 'kore':'korah',
+    'shelachlecha':'shelah', 'shelachlekha':'shelah',
+    'korah':'korah', 'korach':'korah', 'kore':'korah',
+    'chukat':'choukat', 'chukkatbalak':'choukat', 'chukatbalak':'choukat',
+    'pinchas':'pinhas', 'pinechas':'pinhas',
+    'matotmassei':'matot', 'matotmasei':'matot', 'massai':'matot',
     'choukat':'choukat', 'chukkat':'choukat', 'houkat':'choukat',
     'balak':'balak',
     'pinhas':'pinhas', 'pinkhas':'pinhas',
@@ -6372,6 +6378,16 @@ function getCoursKey(paracha, day){
     if(p.indexOf(k)>=0) return map[k]+'-'+d;
   }
   return null;
+}
+
+function refreshCoursCard(){
+  var el = document.getElementById('cours-card-container');
+  if(el){
+    el.innerHTML = buildCoursCard();
+  } else {
+    // container pas encore créé — buildHome() le créera
+    buildHome();
+  }
 }
 
 function buildCoursCard(){
