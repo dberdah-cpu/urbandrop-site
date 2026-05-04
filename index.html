@@ -1350,6 +1350,70 @@ var hebDateStr = '';
 var hebDateHeb = '';
 var hebDateFr = '';  // date hébraïque en transcription française, depuis Hebcal
 var currentParashaName = ''; // nom paracha de la semaine (anglais Hebcal)
+
+// Calendrier des parashot 2026 (date du chabbat = dernier jour de la semaine)
+// Format: [année, mois-1, jour, nomParacha]
+var PARASHOT_2026 = [
+  [2026,0,3,'Vayechi'],
+  [2026,0,10,'Shemot'],
+  [2026,0,17,'Vaera'],
+  [2026,0,24,'Bo'],
+  [2026,1,7,'Beshalach'],
+  [2026,1,14,'Yitro'],
+  [2026,1,21,'Mishpatim'],
+  [2026,1,28,'Terumah'],
+  [2026,2,7,'Tetzaveh'],
+  [2026,2,14,'Ki Tisa'],
+  [2026,2,21,'Vayakhel-Pekudei'],
+  [2026,2,28,'Vayikra'],
+  [2026,3,4,'Tzav'],
+  [2026,3,18,'Shemini'],
+  [2026,3,25,'Tazria-Metzora'],
+  [2026,4,2,'Achrei Mot-Kedoshim'],
+  [2026,4,9,'Emor'],
+  [2026,4,16,'Behar-Bechukotai'],
+  [2026,4,23,'Bamidbar'],
+  [2026,4,30,'Nasso'],
+  [2026,5,6,'Beha'alotcha'],
+  [2026,5,13,'Shelach'],
+  [2026,5,20,'Korach'],
+  [2026,5,27,'Chukat-Balak'],
+  [2026,6,4,'Pinchas'],
+  [2026,6,11,'Matot-Massei'],
+  [2026,6,18,'Devarim'],
+  [2026,6,25,'Vaetchanan'],
+  [2026,7,1,'Ekev'],
+  [2026,7,8,'Reeh'],
+  [2026,7,15,'Shoftim'],
+  [2026,7,22,'Ki Teitzei'],
+  [2026,7,29,'Ki Tavo'],
+  [2026,8,5,'Nitzavim-Vayelech'],
+  [2026,8,12,'Haazinu'],
+];
+
+function getParashaFromCalendar(){
+  var now = new Date();
+  var best = null;
+  var bestDiff = Infinity;
+  for(var i=0;i<PARASHOT_2026.length;i++){
+    var p = PARASHOT_2026[i];
+    var shabbat = new Date(p[0], p[1], p[2]);
+    // La semaine de cette paracha va du dimanche précédent au vendredi suivant
+    var sunday = new Date(shabbat); sunday.setDate(shabbat.getDate()-6);
+    var friday = new Date(shabbat); friday.setDate(shabbat.getDate()-1);
+    if(now >= sunday && now <= shabbat){
+      return p[3];
+    }
+  }
+  // Fallback : paracha la plus proche
+  for(var i=0;i<PARASHOT_2026.length;i++){
+    var p = PARASHOT_2026[i];
+    var shabbat = new Date(p[0], p[1], p[2]);
+    var diff = Math.abs(now - shabbat);
+    if(diff < bestDiff){ bestDiff = diff; best = p[3]; }
+  }
+  return best;
+}
 var currentParashaHeb = '';  // nom hébreu
 var candleTime = '';
 var havdalaTime = '';
@@ -6395,8 +6459,10 @@ function buildCoursCard(){
   var now = new Date();
   var jsDay = now.getDay(); // 0=dim,1=lun,...,5=ven,6=sam
   var courseDay = jsDay === 6 ? -1 : jsDay; // sam=pas de cours
-  var key = getCoursKey(currentParashaName, courseDay);
-  console.log('[Cours] buildCoursCard parashaName='+currentParashaName+' jsDay='+jsDay+' key='+key+' exists='+(key&&COURS_DATA[key]?'OUI':'NON'));
+  // Utiliser le nom Hebcal ou le calendrier hardcodé comme fallback
+  var parashaName = currentParashaName || getParashaFromCalendar() || '';
+  var key = getCoursKey(parashaName, courseDay);
+  console.log('[Cours] parashaName='+parashaName+' jsDay='+jsDay+' key='+key);
   if(!key || !COURS_DATA[key]) return '';
   var c = COURS_DATA[key];
   return '<div class="cours-card" onclick="openCours(\''+key+'\')">'
