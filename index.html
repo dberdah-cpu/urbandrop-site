@@ -437,6 +437,20 @@
 
 /* ── Variables ── */
 :root{
+  --font-scale: 1;
+}
+body.text-lg { --font-scale: 1.15; }
+body.text-xl { --font-scale: 1.3; }
+
+/* Appliquer le scale sur tous les textes principaux */
+.cv-titre, .cv-sous-titre, .cv-accroche-titre, .cv-intro,
+.cv-section-text, .cv-verset-heb, .cv-verset-fr,
+.hd-body, .hd-lecon-text, .hd-title, .hd-sub,
+.hayom-text, .recueil-text,
+.admin-card, .vid-title, .vid-meta {
+  font-size: calc(1em * var(--font-scale)) !important;
+}
+:root{
   --purple:#4F46E5;
   --purple-2:#7C3AED;
   --pink:#EC4899;
@@ -1195,7 +1209,26 @@ body{
   </div>
 </div>
 
-    <!-- Bouton admin discret -->
+    <!-- Taille de police -->
+    <div style="background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:16px;margin:0 16px 12px;">
+      <div style="font-size:14px;font-weight:700;color:var(--dark);font-family:Poppins,sans-serif;margin-bottom:12px;">📝 Taille du texte</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="setTextSize('normal')" id="ts-normal"
+          style="flex:1;padding:10px;border:2px solid var(--purple);border-radius:var(--radius-sm);
+          background:var(--purple);color:#fff;font-size:13px;font-family:Poppins,sans-serif;font-weight:600;cursor:pointer;">
+          A — Normal</button>
+        <button onclick="setTextSize('lg')" id="ts-lg"
+          style="flex:1;padding:10px;border:2px solid var(--gray-2);border-radius:var(--radius-sm);
+          background:#fff;color:var(--dark);font-size:15px;font-family:Poppins,sans-serif;font-weight:600;cursor:pointer;">
+          A — Grand</button>
+        <button onclick="setTextSize('xl')" id="ts-xl"
+          style="flex:1;padding:10px;border:2px solid var(--gray-2);border-radius:var(--radius-sm);
+          background:#fff;color:var(--dark);font-size:17px;font-family:Poppins,sans-serif;font-weight:600;cursor:pointer;">
+          A — Max</button>
+      </div>
+    </div>
+
+<!-- Bouton admin discret -->
     <div style="text-align:center;margin-top:32px;">
       <button onclick="openAdmin()" style="background:transparent;border:1px solid var(--gray-2);color:var(--gray-4);padding:8px 20px;border-radius:20px;font-size:12px;font-family:Poppins,sans-serif;cursor:pointer;">⚙️</button>
     </div>
@@ -8924,6 +8957,34 @@ function adminSaveMsg(){
 }
 
 // ── ACCÈS ADMIN (triple tap sur titre app) ───────────────────
+function setTextSize(size){
+  var body = document.body;
+  body.classList.remove('text-lg','text-xl');
+  if(size==='lg') body.classList.add('text-lg');
+  if(size==='xl') body.classList.add('text-xl');
+  localStorage.setItem('textSize', size);
+  // Mettre à jour les boutons
+  ['normal','lg','xl'].forEach(function(s){
+    var btn = document.getElementById('ts-'+s);
+    if(!btn) return;
+    if(s===size){
+      btn.style.background='var(--purple)';
+      btn.style.color='#fff';
+      btn.style.borderColor='var(--purple)';
+    } else {
+      btn.style.background='#fff';
+      btn.style.color='var(--dark)';
+      btn.style.borderColor='var(--gray-2)';
+    }
+  });
+}
+
+// Appliquer la taille sauvegardée au chargement
+(function(){
+  var saved = localStorage.getItem('textSize');
+  if(saved && saved !== 'normal') document.body.classList.add('text-'+saved);
+})();
+
 function adminTitleTap(){
   _adminTapCount++;
   clearTimeout(_adminTapTimer);
