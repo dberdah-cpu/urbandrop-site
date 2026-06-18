@@ -406,15 +406,20 @@
 // ── openOrderModal chargé en dernier pour être sûr ──
 window.openOrderModal = function() {
   var d = window._orderData;
-  var vn={moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'};
+  var vn={moto:'🏍️ Moto',fourgonnette:'🚐 6m³',camionnette:'🚚 12m³','grand-volume':'🏗️ 20m³'};
   var sn={standard:'🕐 Standard',express:'⚡ Express (+20%)',programme:'📅 Programmé'};
   var recap = document.getElementById('modal-recap');
   if(recap && d) {
+    var manutRow = (d.manut && d.manut>0)
+      ? '<div class="mrr"><span class="ml">Manutention</span><span class="mv">'+(d.manutLabel||'')+' (+'+d.manut+'€)</span></div>'
+      : '';
+    var waitRow = '<div class="mrr"><span class="ml">Attente incluse</span><span class="mv">'+(d.waitInc||10)+' min / étape, puis 1€/min</span></div>';
     recap.innerHTML =
       '<div class="mrr"><span class="ml">Départ</span><span class="mv">'+d.dep+'</span></div>'+
       '<div class="mrr"><span class="ml">Arrivée</span><span class="mv">'+d.arr+'</span></div>'+
       '<div class="mrr"><span class="ml">Service</span><span class="mv">'+(sn[d.svc]||d.svc)+(d.slot?' · '+d.slot:'')+'</span></div>'+
       '<div class="mrr"><span class="ml">Véhicule</span><span class="mv">'+(vn[d.vehicule]||d.vehicule)+' · '+d.dist+' km</span></div>'+
+      manutRow + waitRow +
       '<div class="mrr"><span class="ml">Total</span><span class="mp">'+d.base+'€</span></div>';
   }
   var mform = document.getElementById('mform');
@@ -619,6 +624,16 @@ function closeForgotModal() {
   .hc-veh .vp { display:inline-block; font-size:0.68rem; color:var(--navy); font-weight:600; background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:3px 9px; }
   .hc-veh .vd2 { font-size:0.68rem; color:var(--muted); margin-top:4px; margin-bottom:6px; line-height:1.4; }
   .hc-veh .vfoot { font-size:0.65rem; color:var(--teal-dark); font-weight:600; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); display:flex; align-items:center; gap:4px; }
+  .hc-veh-hint { font-size:0.72rem; color:var(--teal-dark); background:rgba(44,181,176,0.07); border:1px solid rgba(44,181,176,0.18); border-radius:10px; padding:9px 12px; margin-bottom:14px; line-height:1.45; }
+  .hc-manut-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .hc-manut { border:1.5px solid var(--border); border-radius:14px; padding:12px 10px; text-align:center; cursor:pointer; background:white; transition:all 0.2s; }
+  .hc-manut:hover { border-color:var(--teal); background:rgba(44,181,176,0.04); transform:translateY(-1px); }
+  .hc-manut.active { border-color:var(--teal); background:rgba(44,181,176,0.08); box-shadow:0 4px 14px rgba(44,181,176,0.15); }
+  .hc-manut .me { font-size:1.4rem; margin-bottom:6px; }
+  .hc-manut .mn { font-size:0.8rem; font-weight:700; color:var(--navy); margin-bottom:3px; }
+  .hc-manut .md { font-size:0.66rem; color:var(--muted); line-height:1.35; margin-bottom:7px; min-height:26px; }
+  .hc-manut .mp { display:inline-block; font-size:0.7rem; font-weight:700; color:var(--teal-dark); background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:3px 10px; }
+  @media(max-width:480px){ .hc-manut-grid { grid-template-columns:repeat(3,1fr); gap:6px; } .hc-manut { padding:10px 6px; } .hc-manut .md { font-size:0.6rem; min-height:32px; } }
 
   /* Distance result chip */
   .hc-dist { display:none; padding:11px 14px; background:rgba(44,181,176,0.07); border:1.5px solid rgba(44,181,176,0.25); border-radius:12px; margin-bottom:12px; font-size:0.84rem; color:var(--teal-dark); font-weight:600; }
@@ -771,6 +786,22 @@ function closeForgotModal() {
   .btn-submit-rating { width:100%; padding:14px; background:var(--teal); color:white; border:none; border-radius:12px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:0.95rem; cursor:pointer; transition:all 0.2s; }
   .btn-submit-rating:hover { background:var(--teal-dark); }
   .btn-skip-rating { width:100%; padding:10px; background:none; border:none; color:var(--muted); font-family:'Plus Jakarta Sans',sans-serif; font-size:0.82rem; cursor:pointer; margin-top:8px; }
+
+  /* ── Notifications in-app ── */
+  .notif-container { position:fixed; top:20px; right:20px; z-index:99999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+  .notif-toast { background:white; border-radius:16px; padding:14px 18px; box-shadow:0 8px 32px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:12px; max-width:320px; pointer-events:all; transform:translateX(120%); transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1); border-left:4px solid var(--teal); }
+  .notif-toast.show { transform:translateX(0); }
+  .notif-toast.success { border-left-color:var(--green); }
+  .notif-toast.error   { border-left-color:var(--red); }
+  .notif-toast.info    { border-left-color:var(--navy); }
+  .notif-icon { font-size:1.4rem; flex-shrink:0; line-height:1; }
+  .notif-body { flex:1; }
+  .notif-title { font-size:0.82rem; font-weight:800; color:var(--navy); margin-bottom:2px; }
+  .notif-msg { font-size:0.75rem; color:var(--muted); line-height:1.4; }
+  .notif-close { background:none; border:none; cursor:pointer; color:var(--muted); font-size:0.9rem; flex-shrink:0; padding:0; }
+  .notif-progress { position:absolute; bottom:0; left:0; height:3px; background:var(--teal); border-radius:0 0 0 16px; animation:notif-progress 5s linear forwards; }
+  @keyframes notif-progress { from { width:100%; } to { width:0%; } }
+  @media(max-width:480px) { .notif-container { top:auto; bottom:80px; right:10px; left:10px; } .notif-toast { max-width:100%; } }
 </style>
 </head>
 <body>
@@ -887,27 +918,51 @@ function closeForgotModal() {
         </div>
         <div class="hc-veh" onclick="hcSelV(this,'fourgonnette',25,1.5)">
           <div class="ve">🚐</div>
-          <div class="vn">Fourgonnette</div>
-          <div class="vd">Colis moyens · 1 palette</div>
-          <div class="vd2">Taille de 2 lave-linge</div>
-          <span class="vp">Jusqu'à 3m³</span>
+          <div class="vn">6m³</div>
+          <div class="vd">Une chambre · ~30 cartons</div>
+          <div class="vd2">Type Kangoo rallongé</div>
+          <span class="vp">Jusqu'à 800 kg</span>
           <div class="vfoot">🏢 Pied de l'immeuble</div>
         </div>
         <div class="hc-veh" onclick="hcSelV(this,'camionnette',40,2)">
           <div class="ve">🚚</div>
-          <div class="vn">Camionnette</div>
-          <div class="vd">Gros volumes · 3 palettes</div>
-          <div class="vd2">1 300 kg max</div>
-          <span class="vp">Jusqu'à 10m³</span>
+          <div class="vn">12m³</div>
+          <div class="vd">Un appart T1 · gros volumes</div>
+          <div class="vd2">Type Renault Master</div>
+          <span class="vp">Jusqu'à 1 400 kg</span>
           <div class="vfoot">🏢 Pied de l'immeuble</div>
         </div>
         <div class="hc-veh" onclick="hcSelV(this,'grand-volume',60,2.5)">
           <div class="ve">🏗️</div>
           <div class="vn">20m³</div>
-          <div class="vd">Très gros volumes · 6 palettes</div>
-          <div class="vd2">1 000 kg max</div>
-          <span class="vp">Jusqu'à 20m³</span>
+          <div class="vd">Un appart T2 · avec hayon</div>
+          <div class="vd2">Charges volumineuses</div>
+          <span class="vp">Jusqu'à 700 kg</span>
           <div class="vfoot">🏢 Pied de l'immeuble</div>
+        </div>
+      </div>
+      <div class="hc-veh-hint">💡 En cas de doute, prenez la taille au-dessus : la différence de prix est minime et vous évitez un second trajet.</div>
+
+      <!-- Manutention -->
+      <div class="hc-veh-label" id="hc-manut-label" style="display:none;">📦 Aide à la manutention</div>
+      <div class="hc-manut-grid" id="hc-manut-grid" style="display:none;">
+        <div class="hc-manut active" onclick="hcSelManut(this,'aucune',0,'Aucune')">
+          <div class="me">🚶</div>
+          <div class="mn">Aucune</div>
+          <div class="md">Trottoir à trottoir</div>
+          <span class="mp">+0€</span>
+        </div>
+        <div class="hc-manut" onclick="hcSelManut(this,'1pers',20,'1 manutentionnaire')">
+          <div class="me">💪</div>
+          <div class="mn">1 personne</div>
+          <div class="md">Le chauffeur vous aide à porter</div>
+          <span class="mp">+20€</span>
+        </div>
+        <div class="hc-manut" onclick="hcSelManut(this,'2pers',30,'2 manutentionnaires')">
+          <div class="me">👷</div>
+          <div class="mn">2 personnes</div>
+          <div class="md">Renfort pour gros volumes / étages</div>
+          <span class="mp">+30€</span>
         </div>
       </div>
 
@@ -1126,6 +1181,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // ── State ──
 let hcV=null, hcB=0, hcK=0, hcDist=null;
+let hcManut=0, hcManutKey='aucune', hcManutLabel='Aucune';
 let placeFrom=null, placeTo=null;
 _register('geoLocate', function(side) {
   if(!navigator.geolocation) { alert('⚠️ Géolocalisation non supportée.'); return; }
@@ -1162,7 +1218,27 @@ _register('hcSelV', function(el, name, base, km) {
   document.querySelectorAll('.hc-veh').forEach(x=>x.classList.remove('active'));
   el.classList.add('active');
   hcV=name; hcB=base; hcK=km;
+  // Manutention : masquée pour la moto, visible sinon
+  var manutLabel = document.getElementById('hc-manut-label');
+  var manutGrid  = document.getElementById('hc-manut-grid');
+  if(name === 'moto') {
+    if(manutLabel) manutLabel.style.display='none';
+    if(manutGrid)  manutGrid.style.display='none';
+    // Réinitialiser la manutention
+    hcManut=0; hcManutKey='aucune'; hcManutLabel='Aucune';
+    document.querySelectorAll('.hc-manut').forEach((x,i)=>x.classList.toggle('active', i===0));
+  } else {
+    if(manutLabel) manutLabel.style.display='block';
+    if(manutGrid)  manutGrid.style.display='grid';
+  }
   if(hcDist && document.getElementById('hc-svc').value) showPrice(); else updateBtn();
+});
+
+_register('hcSelManut', function(el, key, price, label) {
+  document.querySelectorAll('.hc-manut').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  hcManut=price; hcManutKey=key; hcManutLabel=label;
+  if(hcDist && hcV && document.getElementById('hc-svc').value) showPrice();
 });
 
 _register('hcCalc', function() {
@@ -1285,11 +1361,25 @@ function showPrice() {
   const svc=document.getElementById('hc-svc').value||'standard';
   let base=Math.ceil(hcB+hcK*hcDist);
   if(svc==='express') base=Math.ceil(base*(1+(window.EXPRESS_PCT||0.2)));
+  const manut = (hcV==='moto') ? 0 : hcManut;
+  base = base + manut;
+  const waitInc = (hcV==='moto') ? 5 : 10;
   const max=base+3;
-  window._orderData = { dep, arr, svc, dist:hcDist, vehicule:hcV, base, slot:window.calSelectedSlot||null };
+  window._orderData = { dep, arr, svc, dist:hcDist, vehicule:hcV, base,
+    manut, manutKey:hcManutKey, manutLabel:hcManutLabel, waitInc,
+    slot:window.calSelectedSlot||null };
   document.getElementById('hc-pnum').textContent=base+'€ – '+max+'€';
-  const det='Base '+hcB+'€ + '+hcK+'€/km × '+hcDist+' km'+(svc==='express'?' · +20% express':'');
+  let det='Base '+hcB+'€ + '+hcK+'€/km × '+hcDist+' km'+(svc==='express'?' · +20% express':'');
+  if(manut>0) det+=' · Manutention +'+manut+'€';
   document.getElementById('hc-pdet').textContent=det;
+  var waitNote = document.getElementById('hc-wait-note');
+  if(!waitNote) {
+    waitNote = document.createElement('div');
+    waitNote.id = 'hc-wait-note';
+    waitNote.style.cssText = 'font-size:0.68rem;color:var(--muted);margin-top:6px;line-height:1.4;';
+    document.getElementById('hc-pdet').parentNode.appendChild(waitNote);
+  }
+  waitNote.textContent = '⏱ '+waitInc+' min d’attente incluses à l’enlèvement et à la livraison, puis 1€/min au-delà.';
   document.getElementById('hc-price').classList.add('show');
 
   const mainBtn=document.getElementById('hc-btn');
@@ -1297,10 +1387,11 @@ function showPrice() {
   const cmdBtn=document.getElementById('hc-btn-commander');
   cmdBtn.style.display='block';
 
-  const vn={moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'};
+  const vn={moto:'🏍️ Moto',fourgonnette:'🚐 6m³',camionnette:'🚚 12m³','grand-volume':'🏗️ 20m³'};
   const sn={standard:'Standard — dans la journée',express:'Express — dans l’heure',programme:'Programmé'};
   const slot=window.calSelectedSlot?'\n📅 Créneau : '+window.calSelectedSlot:'';
-  const waMsg=encodeURIComponent('Bonjour UrbanDrop 👋\n\n📍 Départ : '+dep+'\n🏁 Arrivée : '+arr+'\n📦 Service : '+(sn[svc]||svc)+slot+'\n🚗 '+(vn[hcV]||hcV)+'\n📏 Distance : '+hcDist+' km\n💰 Estimation : '+base+'€ – '+max+'€\n\nJe souhaite commander cette livraison.');
+  const manutStr = manut>0 ? '\n📦 Manutention : '+hcManutLabel+' (+'+manut+'€)' : '';
+  const waMsg=encodeURIComponent('Bonjour UrbanDrop 👋\n\n📍 Départ : '+dep+'\n🏁 Arrivée : '+arr+'\n📦 Service : '+(sn[svc]||svc)+slot+'\n🚗 '+(vn[hcV]||hcV)+manutStr+'\n📏 Distance : '+hcDist+' km\n💰 Estimation : '+base+'€ – '+max+'€\n\nJe souhaite commander cette livraison.');
   const waUrl='https://wa.me/33775779593?text='+waMsg;
   const floatBtn=document.getElementById('wa-float-btn');
   if(floatBtn) floatBtn.href=waUrl;
@@ -1786,6 +1877,10 @@ function resetAll() {
   // Véhicules
   document.querySelectorAll('.hc-veh').forEach(v => v.classList.remove('active'));
   hcV=null; hcB=0; hcK=0; hcDist=null;
+  hcManut=0; hcManutKey='aucune'; hcManutLabel='Aucune';
+  var _mg=document.getElementById('hc-manut-grid'); if(_mg) _mg.style.display='none';
+  var _ml=document.getElementById('hc-manut-label'); if(_ml) _ml.style.display='none';
+  document.querySelectorAll('.hc-manut').forEach(function(x,i){ x.classList.toggle('active', i===0); });
   placeFrom=null; placeTo=null;
   // Afficheurs
   document.getElementById('hc-dist').classList.remove('show');
@@ -1816,16 +1911,27 @@ function resetAll() {
 }
 
 async function saveOrder(o) {
-  const vn={moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'};
+  const vn={moto:'🏍️ Moto',fourgonnette:'🚐 6m³',camionnette:'🚚 12m³','grand-volume':'🏗️ 20m³'};
   const sn={standard:'Standard',express:'Express',programme:'Programmé'};
 
   // Initialiser _lastRide immédiatement
   const ref = 'UD-' + Date.now().toString(36).toUpperCase();
+  // Préparer l'info manutention + attente pour stockage (pas de migration DB : on l'ajoute dans note_livreur)
+  const _od = window._orderData || {};
+  const manutTxt = (_od.manut && _od.manut>0) ? ('Manutention: '+(_od.manutLabel||'')+' (+'+_od.manut+'EUR)') : 'Manutention: aucune';
+  const waitTxt = 'Attente incluse: '+(_od.waitInc||10)+' min/etape puis 1EUR/min';
+  const noteParts = [];
+  if(o.note) noteParts.push(o.note);
+  noteParts.push(manutTxt);
+  noteParts.push(waitTxt);
+  const noteFull = noteParts.join(' | ');
+
   window._lastRide = { ref, id: null, date: new Date().toISOString(),
     dep: o.dep, arr: o.arr, depName: o.depName, depPhone: o.depPhone,
     arrName: o.arrName, arrPhone: o.arrPhone,
     svc: sn[o.svc]||o.svc, vehicule: vn[o.vehicule]||o.vehicule,
-    dist: o.dist, price: o.base, paiement: selPay||window.selPay, note: o.note||''
+    dist: o.dist, price: o.base, paiement: selPay||window.selPay, note: o.note||'',
+    manut: _od.manut||0, manutLabel: _od.manutLabel||'Aucune', waitInc: _od.waitInc||10
   };
 
   // ── Supabase : sauvegarder la course ──
@@ -1839,7 +1945,7 @@ async function saveOrder(o) {
         expediteur_tel:   o.depPhone,
         destinataire_nom: o.arrName,
         destinataire_tel: o.arrPhone,
-        note_livreur:     o.note || null,
+        note_livreur:     noteFull || null,
         vehicule:         o.vehicule,
         service:          o.svc,
         creneau:          o.slot || null,
@@ -2358,12 +2464,16 @@ function showDeliveryBar(course) {
   } else if(course.statut === 'acceptee') {
     if(title) title.textContent = '🚗 Chauffeur en route vers vous';
     const driver = course.chauffeurs;
-    if(st) st.textContent = driver ? driver.prenom+' '+driver.nom+' · '+(driver.vehicule||'') : 'Chauffeur assigné';
+    const driverName = driver ? driver.prenom+' '+driver.nom : 'Un chauffeur';
+    if(st) st.textContent = driverName + ' · ' + (driver?.vehicule||'');
+    // Notification
+    notify('🚗', 'Chauffeur assigné !', driverName + ' prend en charge votre livraison', 'success');
     // Démarrer GPS
     subscribeDriverPosition(trackingCourseId, null);
   } else if(course.statut === 'en_cours') {
     if(title) title.textContent = '📦 Colis récupéré — en route !';
     if(st) st.textContent = 'Votre livraison est en cours';
+    notify('📦','Colis récupéré !','Votre chauffeur est en route vers la destination','success');
   } else if(course.statut === 'livree') {
     if(title) title.textContent = '✅ Livraison terminée !';
     if(st) st.textContent = 'Votre colis a été livré avec succès';
@@ -2494,7 +2604,7 @@ function updateDriverMarker(pos, courseData) {
 }
 
 function vehiculeLabelClient(v) {
-  return {moto:'🏍️ Moto',fourgonnette:'🚐 Fourgonnette',camionnette:'🚚 Camionnette','grand-volume':'🏗️ 20m³'}[v] || v || 'Véhicule';
+  return {moto:'🏍️ Moto',fourgonnette:'🚐 6m³',camionnette:'🚚 12m³','grand-volume':'🏗️ 20m³'}[v] || v || 'Véhicule';
 }
 
 // ── Chat client ──
@@ -2707,6 +2817,88 @@ async function submitRating() {
   alert('✅ Merci pour votre avis !');
 }
 
+
+// ════════════════════════════════════════
+//  NOTIFICATIONS — In-app + Web Push
+// ════════════════════════════════════════
+
+// ── In-app toast ──
+function showNotif(icon, title, message, type='info', duration=5000) {
+  const container = document.getElementById('notif-container');
+  if(!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'notif-toast ' + type;
+  toast.style.position = 'relative';
+  toast.innerHTML = `
+    <div class="notif-icon">${icon}</div>
+    <div class="notif-body">
+      <div class="notif-title">${title}</div>
+      <div class="notif-msg">${message}</div>
+    </div>
+    <button class="notif-close" onclick="this.parentElement.remove()">✕</button>
+    <div class="notif-progress" style="animation-duration:${duration}ms"></div>
+  `;
+
+  container.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 50);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 400);
+  }, duration);
+}
+
+// ── Web Push ──
+let pushPermission = 'default';
+
+async function requestPushPermission() {
+  if(!('Notification' in window)) return false;
+  if(Notification.permission === 'granted') { pushPermission = 'granted'; return true; }
+  if(Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  pushPermission = result;
+  return result === 'granted';
+}
+
+function sendPushNotif(title, body, icon='🚗') {
+  if(Notification.permission !== 'granted') return;
+  if(document.visibilityState === 'visible') return; // pas de push si la page est visible
+  try {
+    new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: 'urbandrop-delivery',
+      renotify: true
+    });
+  } catch(e) { console.warn('Push notif error:', e); }
+}
+
+function notify(icon, title, message, type='info') {
+  showNotif(icon, title, message, type);
+  sendPushNotif(title, message);
+}
+
+// Demander permission au chargement (discrètement)
+document.addEventListener('DOMContentLoaded', function() {
+  // Demander après 3s pour ne pas bloquer le chargement
+  setTimeout(() => {
+    if('Notification' in window && Notification.permission === 'default') {
+      requestPushPermission();
+    }
+  }, 3000);
+});
+
+// ── Notifications selon événements livraison ──
+// Remplacer les anciens showToast par notify dans le contexte livraison
+const _origSubscribeClientChat = subscribeClientChat;
+subscribeClientChat = function(courseId) {
+  _origSubscribeClientChat(courseId);
+};
+
+// Intercepter les messages du chauffeur pour notifier
+const _origSubChat = window.subscribeClientChat;
+
 </script>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGZlLmPBORB0tuJZPJAP0Zr5BKZ23ZHOM&libraries=places&language=fr&region=FR&callback=initGoogleMaps&loading=async" async defer></script>
@@ -2795,6 +2987,10 @@ async function submitRating() {
     <button class="btn-skip-rating" onclick="closeRating()">Passer</button>
   </div>
 </div>
+
+
+<!-- Notifications container -->
+<div class="notif-container" id="notif-container"></div>
 
 </body>
 </html>

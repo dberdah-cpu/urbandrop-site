@@ -298,6 +298,19 @@ input:checked + .toggle-slider:before { transform:translateX(30px); }
   .forgot-actions { display:flex; gap:8px; }
   .btn-forgot-cancel { flex:1; padding:12px; background:none; border:1.5px solid var(--border); border-radius:10px; font-family:"Plus Jakarta Sans",sans-serif; font-weight:700; cursor:pointer; }
   .btn-forgot-send { flex:2; padding:12px; background:var(--teal); border:none; border-radius:10px; font-family:"Plus Jakarta Sans",sans-serif; font-weight:800; cursor:pointer; color:white; }
+
+  /* ── Notifications ── */
+  .notif-container { position:fixed; top:16px; right:16px; z-index:99999; display:flex; flex-direction:column; gap:8px; pointer-events:none; max-width:300px; }
+  .notif-toast { background:white; border-radius:14px; padding:12px 16px; box-shadow:0 6px 24px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:10px; pointer-events:all; transform:translateX(120%); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); border-left:4px solid var(--teal); position:relative; overflow:hidden; }
+  .notif-toast.show { transform:translateX(0); }
+  .notif-toast.success { border-left-color:var(--green); }
+  .notif-toast.error { border-left-color:var(--red); }
+  .notif-icon { font-size:1.2rem; flex-shrink:0; }
+  .notif-body .notif-title { font-size:0.8rem; font-weight:800; color:var(--navy); }
+  .notif-body .notif-msg { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+  .notif-progress { position:absolute; bottom:0; left:0; height:3px; background:var(--teal); animation:nprog 5s linear forwards; }
+  @keyframes nprog { from{width:100%} to{width:0%} }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -392,10 +405,10 @@ function logout() { if(window._logout) window._logout(); else { localStorage.rem
             <span class="vo-icon">🏍️</span><div class="vo-name">Moto</div>
           </div>
           <div class="vehicle-option" onclick="selectVehicle(this,'fourgonnette')" data-v="fourgonnette">
-            <span class="vo-icon">🚐</span><div class="vo-name">Fourgonnette</div>
+            <span class="vo-icon">🚐</span><div class="vo-name">6m³</div>
           </div>
           <div class="vehicle-option" onclick="selectVehicle(this,'camionnette')" data-v="camionnette">
-            <span class="vo-icon">🚚</span><div class="vo-name">Camionnette</div>
+            <span class="vo-icon">🚚</span><div class="vo-name">12m³</div>
           </div>
           <div class="vehicle-option" onclick="selectVehicle(this,'grand-volume')" data-v="grand-volume">
             <span class="vo-icon">🏗️</span><div class="vo-name">20m³</div>
@@ -629,8 +642,8 @@ let simulationInterval = null;
 
 const VEHICLES = {
   'moto': '🏍️ Moto',
-  'fourgonnette': '🚐 Fourgonnette',
-  'camionnette': '🚚 Camionnette',
+  'fourgonnette': '🚐 6m³',
+  'camionnette': '🚚 12m³',
   'grand-volume': '🏗️ 20m³'
 };
 
@@ -914,7 +927,7 @@ const SAMPLE_ADDRESSES = [
   {dep:'Belleville, Paris 20e', arr:'Versailles, Yvelines', dist:24.5, price:88},
 ];
 const SERVICES = ['Standard','Express (+20%)','Programmé'];
-const VEH_LABELS = ['🏍️ Moto','🚐 Fourgonnette','🚚 Camionnette'];
+const VEH_LABELS = ['🏍️ Moto','🚐 6m³','🚚 12m³','🏗️ 20m³'];
 
 function generateCourse() {
   const a = SAMPLE_ADDRESSES[Math.floor(Math.random()*SAMPLE_ADDRESSES.length)];
@@ -979,6 +992,15 @@ function renderCourseList() {
   const count = document.getElementById('courses-count');
   const available = activeCourses.filter(c => c.status !== 'expiré');
   count.textContent = available.length + ' course' + (available.length>1?'s':'');
+
+  // Notifier si nouvelle course
+  const newCourses = activeCourses.filter(x => x.status === 'nouveau');
+  if(newCourses.length > 0 && isOnline && typeof notifyDriver === 'function') {
+    notifyDriver('🚨', 'Nouvelle course !',
+      (newCourses[0].dep||'').substring(0,35) + ' → ' + (newCourses[0].arr||'').substring(0,35),
+      'success'
+    );
+  }
 
   if(!isOnline) {
     list.innerHTML = `<div class="no-courses"><div class="no-courses-icon">😴</div><strong>Vous êtes hors ligne</strong><br><span style="font-size:0.8rem;margin-top:6px;display:block;">Activez votre statut pour recevoir des courses</span></div>`;
@@ -1059,7 +1081,7 @@ function renderCourseDetail() {
   welcome.style.display = 'none';
 
   const isNew = c.status === 'nouveau';
-  const isActive = c.status === 'accepte' || c.status === 'en-cours' || c.status === 'recupere';
+  const isActive = ['accepte','arrive_enl','recupere','arrive_liv','en-cours'].includes(c.status);
 
   detail.innerHTML = `
     <div class="detail-header">
@@ -1107,13 +1129,18 @@ function renderCourseDetail() {
       ${c.note?`<div class="detail-box" style="grid-column:1/-1"><div class="detail-box-label">📝 Note livreur</div><div class="detail-box-value">${c.note}</div></div>`:''}
     </div>
 
+    ${isActive ? `<div id="wait-banner" style="margin-top:10px;"></div>` : ''}
     <div class="action-buttons">
       ${isNew ? `
         <button class="btn-accept" onclick="acceptCourse()">✅ Accepter la course</button>
         <button class="btn-refuse" onclick="refuseCourse()">✕</button>
       ` : c.status === 'accepte' ? `
-        <button class="btn-complete" onclick="pickupCourse()" style="background:var(--orange);">📦 Colis récupéré</button>
+        <button class="btn-complete" onclick="arriveEnlevement()" style="background:var(--navy);">📍 Arrivé à l'enlèvement</button>
+      ` : c.status === 'arrive_enl' ? `
+        <button class="btn-complete" onclick="colisEnleve()" style="background:var(--orange);">📦 Colis enlevé</button>
       ` : c.status === 'recupere' ? `
+        <button class="btn-complete" onclick="arriveLivraison()" style="background:var(--navy);">📍 Arrivé à la livraison</button>
+      ` : c.status === 'arrive_liv' ? `
         <button class="btn-complete" onclick="completeCourse()">🏁 Colis livré ✓</button>
       ` : ''}
     </div>
@@ -1132,30 +1159,108 @@ function renderCourseDetail() {
       </button>
     </div>` : ''}
   `;
+  // Redémarrer le compteur d'attente si on est dans un état d'attente
+  if(selectedCourse && (selectedCourse.status === 'arrive_enl' || selectedCourse.status === 'arrive_liv')) {
+    startWaitBanner(selectedCourse.status === 'arrive_enl' ? 'enl' : 'liv');
+  } else {
+    stopWaitBanner();
+  }
 }
 
 
-async function pickupCourse() {
+// ════════════════════════════════════════
+//  FLUX 4 ÉTAPES + COMPTEUR D'ATTENTE
+// ════════════════════════════════════════
+// Minutes d'attente incluses par étape selon le véhicule
+function waitIncludedMin(c) {
+  return (c && c.vehicule === 'moto') ? 5 : 10;
+}
+const WAIT_RATE = 1;       // 1€/min au-delà
+const WAIT_TOLERANCE = 1;  // 1 min de tolérance
+
+let _waitTimerInterval = null;
+
+function startWaitBanner(kind) {
+  // kind = 'enl' ou 'liv'
+  stopWaitBanner();
+  _waitTimerInterval = setInterval(updateWaitBanner, 1000);
+  updateWaitBanner();
+}
+function stopWaitBanner() {
+  if(_waitTimerInterval) { clearInterval(_waitTimerInterval); _waitTimerInterval = null; }
+}
+function updateWaitBanner() {
+  const c = selectedCourse;
+  const banner = document.getElementById('wait-banner');
+  if(!c || !banner) return;
+  let startTs = null, kind = null;
+  if(c.status === 'arrive_enl') { startTs = c._enlStart; kind = 'enlèvement'; }
+  else if(c.status === 'arrive_liv') { startTs = c._livStart; kind = 'livraison'; }
+  if(!startTs) { banner.innerHTML=''; return; }
+  const inc = waitIncludedMin(c);
+  const elapsedSec = Math.floor((Date.now() - startTs)/1000);
+  const elapsedMin = Math.floor(elapsedSec/60);
+  const ss = String(elapsedSec%60).padStart(2,'0');
+  const overMin = Math.max(0, elapsedMin - inc - WAIT_TOLERANCE);
+  const overCost = overMin * WAIT_RATE;
+  const within = elapsedMin < (inc + WAIT_TOLERANCE);
+  banner.innerHTML =
+    '<div style="padding:12px 14px;border-radius:12px;background:'+(within?'rgba(44,181,176,0.1)':'rgba(255,159,28,0.14)')+';border:1.5px solid '+(within?'rgba(44,181,176,0.3)':'rgba(255,159,28,0.4)')+';">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;">'+
+        '<span style="font-size:0.78rem;font-weight:700;color:var(--navy);">⏱ Attente '+kind+'</span>'+
+        '<span style="font-size:1rem;font-weight:800;color:'+(within?'var(--teal-dark)':'#d97706')+';">'+elapsedMin+' min '+ss+'s</span>'+
+      '</div>'+
+      '<div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">'+
+        inc+' min incluses · '+(within ? 'dans le forfait' : ('dépassement : '+overMin+' min = +'+overCost+'€'))+
+      '</div>'+
+    '</div>';
+}
+
+async function arriveEnlevement() {
   if(!selectedCourse) return;
-  // Mettre à jour statut en DB
+  selectedCourse.status = 'arrive_enl';
+  selectedCourse._enlStart = Date.now();
   if(_sb && selectedCourse._dbId) {
-    await _sb.from('courses').update({
-      statut: 'en_cours',
-      pickup_at: new Date().toISOString()
-    }).eq('id', selectedCourse._dbId);
+    _sb.from('courses').update({ statut:'arrive_enl' }).eq('id', selectedCourse._dbId).then(()=>{});
   }
-  selectedCourse.status = 'recupere';
   renderCourseList();
   renderCourseDetail();
-  showToast('📦','Colis récupéré ! En route vers la destination.','success');
-  // Notifier via Supabase message automatique
+  startWaitBanner('enl');
+  showToast('📍','Arrivée enregistrée. Le compteur d\'attente démarre.','info');
+}
+
+async function colisEnleve() {
+  if(!selectedCourse) return;
+  stopWaitBanner();
+  // Calculer le dépassement enlèvement
+  const inc = waitIncludedMin(selectedCourse);
+  const elapsedMin = selectedCourse._enlStart ? Math.floor((Date.now()-selectedCourse._enlStart)/60000) : 0;
+  selectedCourse._enlOverMin = Math.max(0, elapsedMin - inc - WAIT_TOLERANCE);
+  selectedCourse.status = 'recupere';
   if(_sb && selectedCourse._dbId) {
+    _sb.from('courses').update({ statut:'en_cours', pickup_at:new Date().toISOString() }).eq('id', selectedCourse._dbId).then(()=>{});
     await _sb.from('messages').insert({
-      course_id: selectedCourse._dbId,
-      expediteur: 'chauffeur',
+      course_id: selectedCourse._dbId, expediteur:'chauffeur',
       contenu: '📦 Votre colis a été récupéré ! Le chauffeur est en route vers vous.'
     });
   }
+  renderCourseList();
+  renderCourseDetail();
+  const over = selectedCourse._enlOverMin;
+  showToast('📦', over>0 ? ('Colis enlevé · +'+over+' min d\'attente facturées') : 'Colis enlevé ! En route.', 'success');
+}
+
+async function arriveLivraison() {
+  if(!selectedCourse) return;
+  selectedCourse.status = 'arrive_liv';
+  selectedCourse._livStart = Date.now();
+  if(_sb && selectedCourse._dbId) {
+    _sb.from('courses').update({ statut:'arrive_liv' }).eq('id', selectedCourse._dbId).then(()=>{});
+  }
+  renderCourseList();
+  renderCourseDetail();
+  startWaitBanner('liv');
+  showToast('📍','Arrivée à la livraison. Le compteur d\'attente démarre.','info');
 }
 
 // ── Accept / Refuse / Complete ──
@@ -1201,22 +1306,34 @@ function refuseCourse() {
 
 async function completeCourse() {
   if(!selectedCourse) return;
-  // Mettre à jour statut en DB
-  if(_sb && selectedCourse._dbId) {
+  stopWaitBanner();
+  const c = selectedCourse;
+  // Dépassement livraison
+  const inc = waitIncludedMin(c);
+  const livElapsed = c._livStart ? Math.floor((Date.now()-c._livStart)/60000) : 0;
+  c._livOverMin = Math.max(0, livElapsed - inc - WAIT_TOLERANCE);
+  // Total attente facturée
+  const totalOverMin = (c._enlOverMin||0) + (c._livOverMin||0);
+  const waitCost = totalOverMin * WAIT_RATE;
+  c._waitCost = waitCost;
+  // Prix final = prix de base + attente
+  const finalPrice = (c.price||0) + waitCost;
+  c.finalPrice = finalPrice;
+  // Mettre à jour statut + prix en DB
+  if(_sb && c._dbId) {
     await _sb.from('courses').update({
       statut: 'livree',
-      livree_at: new Date().toISOString()
-    }).eq('id', selectedCourse._dbId).then(()=>{});
+      livree_at: new Date().toISOString(),
+      prix_total: finalPrice
+    }).eq('id', c._dbId).then(()=>{});
   }
-  const c = selectedCourse;
-  // completeCourseDB remplacé par mise à jour directe Supabase ci-dessus
   c.status = 'terminé';
   c.completedAt = new Date().toISOString();
   completedCourses.unshift(c);
   saveCompleted(completedCourses);
   if(currentDriver) {
     currentDriver.totalRides = (currentDriver.totalRides||0) + 1;
-    currentDriver.totalEarnings = (currentDriver.totalEarnings||0) + net(c.price);
+    currentDriver.totalEarnings = (currentDriver.totalEarnings||0) + net(c.finalPrice||c.price);
     saveDriver(currentDriver);
   }
   activeCourses = activeCourses.filter(x => x.ref !== c.ref);
@@ -1226,18 +1343,16 @@ async function completeCourse() {
   renderCourseList();
   updateStats();
   renderEarningsHistory();
-  showToast('🎉','Livraison effectuée ! +'+net(c.price)+'€ encaissés','success');
+  const waitMsg = (c._waitCost>0) ? (' (dont +'+c._waitCost+'€ d\'attente)') : '';
+  showToast('🎉','Livraison effectuée ! +'+net(c.finalPrice||c.price)+'€ encaissés'+waitMsg,'success');
   // Notifier client + fermer la course
   if(_sb && c._dbId) {
+    const clientMsg = (c._waitCost>0)
+      ? ('✅ Votre colis a été livré ! Total : '+c.finalPrice+'€ (dont '+c._waitCost+'€ de temps d\'attente). Merci ! 🎉')
+      : '✅ Votre colis a été livré ! Merci d\'avoir choisi UrbanDrop. 🎉';
     await _sb.from('messages').insert({
-      course_id: c._dbId,
-      expediteur: 'chauffeur',
-      contenu: '✅ Votre colis a été livré ! Merci d\'avoir choisi UrbanDrop. 🎉'
+      course_id: c._dbId, expediteur:'chauffeur', contenu: clientMsg
     });
-    await _sb.from('courses').update({
-      statut: 'livree',
-      livree_at: new Date().toISOString()
-    }).eq('id', c._dbId);
   }
   // Arrêter GPS
   stopGPS();
@@ -1545,7 +1660,9 @@ async function fetchCoursesFromDB() {
       note:     c.note_livreur || '',
       status:   c.statut === 'en_attente' ? 'nouveau' :
                 c.statut === 'acceptee'   ? 'accepte' :
-                c.statut === 'en_cours'   ? 'en-cours' : c.statut,
+                c.statut === 'arrive_enl' ? 'arrive_enl' :
+                c.statut === 'en_cours'   ? 'recupere' :
+                c.statut === 'arrive_liv' ? 'arrive_liv' : c.statut,
       chauffeur_id: c.chauffeur_id,
       countdown: 30,
       createdAt: c.created_at
@@ -1592,6 +1709,47 @@ function toggleGPSManual() {
     document.getElementById('btn-gps-manual').style.background = 'var(--red)';
   }
 }
+
+
+// ════════════════════════════════════
+//  NOTIFICATIONS CHAUFFEUR
+// ════════════════════════════════════
+function showNotif(icon, title, message, type='info', duration=5000) {
+  const container = document.getElementById('notif-container');
+  if(!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'notif-toast ' + type;
+  toast.innerHTML = `
+    <div class="notif-icon">${icon}</div>
+    <div class="notif-body">
+      <div class="notif-title">${title}</div>
+      <div class="notif-msg">${message}</div>
+    </div>
+    <div class="notif-progress" style="animation-duration:${duration}ms"></div>
+  `;
+  container.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 50);
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, duration);
+}
+
+function sendPushNotif(title, body) {
+  if(Notification.permission !== 'granted' || document.visibilityState === 'visible') return;
+  try { new Notification(title, { body, tag:'urbandrop-driver', renotify:true }); } catch(e) {}
+}
+
+function notifyDriver(icon, title, msg, type='info') {
+  showNotif(icon, title, msg, type);
+  sendPushNotif(title, msg);
+}
+
+// Demander permission push
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    if('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, 2000);
+});
 
 // ── Init ──
 const saved = loadDriver();
@@ -1640,5 +1798,6 @@ if(saved) {
 
 
 
+<div class="notif-container" id="notif-container"></div>
 </body>
 </html>
