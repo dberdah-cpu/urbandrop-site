@@ -845,7 +845,7 @@ function closeForgotModal() {
 <section id="hero">
   <div class="hero-left">
     <div class="hero-badge"><span class="live-dot"></span> 30 ans d'expérience · Paris &amp; Île-de-France</div>
-    <h1>Transport <span class="teal">express</span><br>dès l'heure qui suit</h1>
+    <h1>Transport <span class="teal">express</span><br>dans l'heure</h1>
     <p class="hero-sub">Particuliers et professionnels : colis, pièces urgentes, documents, matériel ou gros volumes. Enlèvement dans l'heure, transport dédié et fiable — <strong>dès 15€</strong>.</p>
 
     <!-- CALCULATEUR HERO -->
@@ -1652,10 +1652,11 @@ document.getElementById('btn-pay').addEventListener('click', function() {
     <div class="modal-success-view" id="msuccess">
       <div style="font-size:3.5rem;margin-bottom:16px;">🎉</div>
       <div style="font-size:1.35rem;font-weight:800;color:var(--navy);margin-bottom:10px;">Commande confirmée !</div>
-      <p style="font-size:0.87rem;color:var(--muted);line-height:1.7;">Vous allez recevoir une confirmation WhatsApp.<br>Votre livreur est en route !</p>
+      <p style="font-size:0.87rem;color:var(--muted);line-height:1.7;">Confirmez votre course sur WhatsApp pour une prise en charge immédiate.<br>Votre livreur sera en route !</p>
       <div id="msuccess-ref" style="display:inline-block;margin:10px 0;padding:7px 16px;background:rgba(44,181,176,0.1);border-radius:8px;font-size:0.78rem;font-weight:700;color:var(--teal-dark);letter-spacing:.5px;"></div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap;">
-        <button onclick="downloadLastReceipt()" style="display:flex;align-items:center;gap:8px;padding:12px 22px;background:var(--navy);color:white;border:none;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;cursor:pointer;font-size:0.85rem;">📄 Télécharger le reçu PDF</button>
+        <a id="msuccess-wa" href="#" target="_blank" style="display:flex;align-items:center;gap:8px;padding:12px 22px;background:#25D366;color:white;border:none;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;cursor:pointer;font-size:0.85rem;text-decoration:none;">💬 Confirmer sur WhatsApp</a>
+        <button onclick="downloadLastReceipt()" style="display:flex;align-items:center;gap:8px;padding:12px 22px;background:var(--navy);color:white;border:none;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;cursor:pointer;font-size:0.85rem;">📄 Reçu PDF</button>
         <button onclick="closeModal()" style="padding:12px 22px;background:var(--teal);color:white;border:none;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;cursor:pointer;font-size:0.85rem;">Parfait ! 👍</button>
       </div>
     </div>
@@ -1753,10 +1754,11 @@ _register('submitOrder', async function() {
       if(!intentRes.ok) {
         // Edge Function pas encore déployée → fallback mode test
         console.warn('Edge Function non disponible, mode test activé');
-        await saveOrder({depName, depPhone, arrName, arrPhone, note, ...d});
+        await saveOrder({depName, depPhone, arrName, arrPhone, note, ...d}).catch(e=>console.warn('saveOrder fallback:',e));
         document.getElementById('mform').style.display='none';
         document.getElementById('msuccess').classList.add('show');
         if(window._lastRide) document.getElementById('msuccess-ref').textContent = 'Réf. ' + window._lastRide.ref;
+        var _wbf=document.getElementById('msuccess-wa'); if(_wbf && window._lastWaLink) _wbf.href=window._lastWaLink;
         resetAll(); return;
       }
 
@@ -1816,6 +1818,7 @@ _register('submitOrder', async function() {
             document.getElementById('mform').style.display='none';
             document.getElementById('msuccess').classList.add('show');
             if(window._lastRide) document.getElementById('msuccess-ref').textContent = 'Réf. ' + window._lastRide.ref;
+        var _wb=document.getElementById('msuccess-wa'); if(_wb && window._lastWaLink) _wb.href=window._lastWaLink;
             resetAll();
           } catch(err) { ev.complete('fail'); throw err; }
         });
@@ -1825,30 +1828,29 @@ _register('submitOrder', async function() {
         btn.disabled=false; btn.textContent='Réessayer'; return;
       }
     } else {
-      await saveOrder({depName, depPhone, arrName, arrPhone, note, ...d});
+      await saveOrder({depName, depPhone, arrName, arrPhone, note, ...d}).catch(e=>console.warn('saveOrder:',e));
     }
 
     document.getElementById('mform').style.display='none';
     document.getElementById('msuccess').classList.add('show');
     if(window._lastRide) document.getElementById('msuccess-ref').textContent = 'Réf. ' + window._lastRide.ref;
-    // Démarrer le suivi GPS
-    const rideId = window._lastRide?.id;
-    const rideData = window._orderData ? {...window._orderData} : null;
-    // Envoyer email de confirmation
-    sendConfirmationEmail(window._orderData || {}, window._lastRide || {});
-    resetAll();
-    if(rideId && rideData) {
-      setTimeout(() => startTracking(rideId, rideData), 1000);
-    } else {
-      // Afficher quand même le FAB en attendant que Supabase confirme
-      const fab = document.getElementById('tracking-fab');
-      if(fab) fab.classList.add('visible');
-      console.warn('No rideId yet, will retry...');
-      // Réessayer après 2s
-      setTimeout(() => {
-        if(window._lastRide?.id && rideData) startTracking(window._lastRide.id, rideData);
-      }, 3000);
-    }
+    var _wb=document.getElementById('msuccess-wa'); if(_wb && window._lastWaLink) _wb.href=window._lastWaLink;
+    // Suivi GPS + email — encapsulés pour ne jamais bloquer la confirmation
+    try {
+      const rideId = window._lastRide?.id;
+      const rideData = window._orderData ? {...window._orderData} : null;
+      try { sendConfirmationEmail(window._orderData || {}, window._lastRide || {}); } catch(e){ console.warn('email:',e); }
+      resetAll();
+      if(rideId && rideData) {
+        setTimeout(() => { try { startTracking(rideId, rideData); } catch(e){ console.warn('tracking:',e); } }, 1000);
+      } else {
+        const fab = document.getElementById('tracking-fab');
+        if(fab) fab.classList.add('visible');
+        setTimeout(() => {
+          try { if(window._lastRide?.id && rideData) startTracking(window._lastRide.id, rideData); } catch(e){ console.warn('tracking retry:',e); }
+        }, 3000);
+      }
+    } catch(e) { console.warn('post-confirmation:',e); }
   } catch(err) {
     btn.disabled=false; btn.textContent='Réessayer';
     alert('❌ Erreur : ' + err.message);
@@ -1978,7 +1980,11 @@ async function saveOrder(o) {
     noteStr+'\n\n'+
     'Merci de confirmer la prise en charge !'
   );
-  setTimeout(()=>window.open('https://wa.me/'+(window.WA_NUMBER_DYN||WA_NUMBER)+'?text='+waMsg,'_blank'),600);
+  const _waLink = 'https://wa.me/'+(window.WA_NUMBER_DYN||WA_NUMBER)+'?text='+waMsg;
+  window._lastWaLink = _waLink;
+  // Mettre à jour le bouton WhatsApp de l'écran de succès (clic utilisateur = jamais bloqué)
+  var _waBtn = document.getElementById('msuccess-wa');
+  if(_waBtn) _waBtn.href = _waLink;
 
   // ── Sauvegarder dans l'historique ──
   window._lastRide.slot = o.slot || null;
