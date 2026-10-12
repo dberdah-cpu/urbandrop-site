@@ -420,7 +420,8 @@ window.openOrderModal = function() {
       '<div class="mrr"><span class="ml">Service</span><span class="mv">'+(sn[d.svc]||d.svc)+(d.slot?' · '+d.slot:'')+'</span></div>'+
       '<div class="mrr"><span class="ml">Véhicule</span><span class="mv">'+(vn[d.vehicule]||d.vehicule)+' · '+d.dist+' km</span></div>'+
       manutRow + waitRow +
-      '<div class="mrr"><span class="ml">Total</span><span class="mp">'+d.base+'€</span></div>';
+      '<div class="mrr"><span class="ml">Total</span><span class="mp">'+(d.baseTTC||d.base)+'€ TTC</span></div>'+
+      '<div class="mrr" style="margin-top:-4px;"><span class="ml" style="font-size:0.7rem;"></span><span class="mv" style="font-size:0.72rem;color:var(--muted);">soit '+d.base+'€ HT</span></div>';
   }
   var mform = document.getElementById('mform');
   var msuccess = document.getElementById('msuccess');
@@ -916,7 +917,7 @@ function closeForgotModal() {
           <span class="vp">Jusqu'à 15kg</span>
           <div class="vfoot">🏢 Pied de l'immeuble</div>
         </div>
-        <div class="hc-veh" onclick="hcSelV(this,'fourgonnette',25,1.5)">
+        <div class="hc-veh" onclick="hcSelV(this,'fourgonnette',40,1.8)">
           <div class="ve">🚐</div>
           <div class="vn">6m³</div>
           <div class="vd">Une chambre · ~30 cartons</div>
@@ -924,7 +925,7 @@ function closeForgotModal() {
           <span class="vp">Jusqu'à 800 kg</span>
           <div class="vfoot">🏢 Pied de l'immeuble</div>
         </div>
-        <div class="hc-veh" onclick="hcSelV(this,'camionnette',40,2)">
+        <div class="hc-veh" onclick="hcSelV(this,'camionnette',60,2)">
           <div class="ve">🚚</div>
           <div class="vn">12m³</div>
           <div class="vd">Un appart T1 · gros volumes</div>
@@ -932,7 +933,7 @@ function closeForgotModal() {
           <span class="vp">Jusqu'à 1 400 kg</span>
           <div class="vfoot">🏢 Pied de l'immeuble</div>
         </div>
-        <div class="hc-veh" onclick="hcSelV(this,'grand-volume',60,2.5)">
+        <div class="hc-veh" onclick="hcSelV(this,'grand-volume',85,2.5)">
           <div class="ve">🏗️</div>
           <div class="vn">20m³</div>
           <div class="vd">Un appart T2 · avec hayon</div>
@@ -978,6 +979,7 @@ function closeForgotModal() {
           <div>
             <div class="hc-price-lbl">Estimation du tarif</div>
             <div class="hc-price-num" id="hc-pnum">—</div>
+            <div id="hc-pht" style="font-size:0.8rem;color:var(--muted);font-weight:600;margin-top:2px;"></div>
             <div class="hc-price-det" id="hc-pdet"></div>
           </div>
           <span style="font-size:2rem;">🚀</span>
@@ -1359,17 +1361,24 @@ function showPrice() {
   const dep=document.getElementById('hc-dep').value.trim();
   const arr=document.getElementById('hc-arr').value.trim();
   const svc=document.getElementById('hc-svc').value||'standard';
-  let base=Math.ceil(hcB+hcK*hcDist);
-  if(svc==='express') base=Math.ceil(base*(1+(window.EXPRESS_PCT||0.2)));
+  // Tarification simple base + km (couvre le recours Ecotime). Manutention et attente s'ajoutent par-dessus.
+  let base = Math.ceil(hcB + hcK*hcDist);
+  let priceDetail = 'Base '+hcB+'€ + '+hcK+'€/km × '+hcDist+' km';
+  if(svc==='express') { base=Math.ceil(base*(1+(window.EXPRESS_PCT||0.2))); priceDetail += ' · +'+Math.round((window.EXPRESS_PCT||0.2)*100)+'% express'; }
   const manut = (hcV==='moto') ? 0 : hcManut;
   base = base + manut;
   const waitInc = (hcV==='moto') ? 5 : 10;
-  const max=base+3;
-  window._orderData = { dep, arr, svc, dist:hcDist, vehicule:hcV, base,
+  // base = prix HT (calibré face à Ecotime). On affiche le TTC (×1,20) au client + HT en dessous.
+  const TVA = 0.20;
+  const baseTTC = Math.ceil(base * (1+TVA));
+  const maxTTC = baseTTC + 4;
+  window._orderData = { dep, arr, svc, dist:hcDist, vehicule:hcV, base, baseHT:base, baseTTC,
     manut, manutKey:hcManutKey, manutLabel:hcManutLabel, waitInc,
     slot:window.calSelectedSlot||null };
-  document.getElementById('hc-pnum').textContent=base+'€ – '+max+'€';
-  let det='Base '+hcB+'€ + '+hcK+'€/km × '+hcDist+' km'+(svc==='express'?' · +20% express':'');
+  document.getElementById('hc-pnum').textContent=baseTTC+'€ – '+maxTTC+'€ TTC';
+  var phtEl = document.getElementById('hc-pht');
+  if(phtEl) phtEl.textContent = 'soit '+base+'€ HT';
+  let det=priceDetail;
   if(manut>0) det+=' · Manutention +'+manut+'€';
   document.getElementById('hc-pdet').textContent=det;
   var waitNote = document.getElementById('hc-wait-note');
@@ -1391,7 +1400,7 @@ function showPrice() {
   const sn={standard:'Standard — dans la journée',express:'Express — dans l’heure',programme:'Programmé'};
   const slot=window.calSelectedSlot?'\n📅 Créneau : '+window.calSelectedSlot:'';
   const manutStr = manut>0 ? '\n📦 Manutention : '+hcManutLabel+' (+'+manut+'€)' : '';
-  const waMsg=encodeURIComponent('Bonjour UrbanDrop 👋\n\n📍 Départ : '+dep+'\n🏁 Arrivée : '+arr+'\n📦 Service : '+(sn[svc]||svc)+slot+'\n🚗 '+(vn[hcV]||hcV)+manutStr+'\n📏 Distance : '+hcDist+' km\n💰 Estimation : '+base+'€ – '+max+'€\n\nJe souhaite commander cette livraison.');
+  const waMsg=encodeURIComponent('Bonjour UrbanDrop 👋\n\n📍 Départ : '+dep+'\n🏁 Arrivée : '+arr+'\n📦 Service : '+(sn[svc]||svc)+slot+'\n🚗 '+(vn[hcV]||hcV)+manutStr+'\n📏 Distance : '+hcDist+' km\n💰 Estimation : '+baseTTC+'€ TTC ('+base+'€ HT)\n\nJe souhaite commander cette livraison.');
   const waUrl='https://wa.me/33775779593?text='+waMsg;
   const floatBtn=document.getElementById('wa-float-btn');
   if(floatBtn) floatBtn.href=waUrl;
@@ -1976,7 +1985,7 @@ async function saveOrder(o) {
     '📌 '+o.arr+'\n\n'+
     '📦 Service : '+(sn[o.svc]||o.svc)+slot+'\n'+
     '🚗 '+(vn[o.vehicule]||o.vehicule)+' · '+o.dist+' km\n'+
-    '💰 '+o.base+'€ · Paiement : '+selPay+
+    '💰 '+(o.baseTTC||o.base)+'€ TTC ('+o.base+'€ HT) · Paiement : '+selPay+
     noteStr+'\n\n'+
     'Merci de confirmer la prise en charge !'
   );
@@ -2365,9 +2374,6 @@ async function sendResetEmail() {
 // Init au chargement
 updateNavAuth();
 
-});
-</script>
-
 // ── Stripe ──
 window.initStripe = function initStripe() {
   if(typeof Stripe==='undefined') return;
@@ -2388,7 +2394,6 @@ window.initStripe = function initStripe() {
   });
 }
 
-<script>
 // Chargement Stripe.js
 const _ss=document.createElement('script');
 _ss.src='https://js.stripe.com/v3/';
@@ -2905,6 +2910,17 @@ subscribeClientChat = function(courseId) {
 // Intercepter les messages du chauffeur pour notifier
 const _origSubChat = window.subscribeClientChat;
 
+// Exposer les fonctions appelées depuis le HTML (onclick)
+window.openTracking = openTracking;
+window.closeTracking = closeTracking;
+window.sendClientMessage = sendClientMessage;
+window.setRating = setRating;
+window.submitRating = submitRating;
+window.closeRating = closeRating;
+window.openRatingModal = openRatingModal;
+window.startTracking = startTracking;
+
+});
 </script>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGZlLmPBORB0tuJZPJAP0Zr5BKZ23ZHOM&libraries=places&language=fr&region=FR&callback=initGoogleMaps&loading=async" async defer></script>

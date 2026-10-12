@@ -180,11 +180,16 @@ tr:hover td{background:rgba(44,181,176,0.03);}
 .empty-icon{font-size:3rem;opacity:0.3;margin-bottom:12px;}
 
 @media(max-width:900px){
-  .sidebar{display:none;}
+  .sidebar{transform:translateX(-100%);transition:transform 0.3s ease;box-shadow:4px 0 24px rgba(0,0,0,0.25);}
+  .sidebar.open{transform:translateX(0);}
   .main{margin-left:0;}
   .kpi-grid{grid-template-columns:repeat(2,1fr);}
   .stats-grid{grid-template-columns:1fr;}
+  .menu-toggle{display:flex !important;}
+  .sidebar-overlay.open{display:block;}
 }
+.menu-toggle{display:none;position:fixed;top:14px;left:14px;z-index:300;width:44px;height:44px;border-radius:12px;background:var(--navy);color:white;border:none;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.25);}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:90;}
 
   /* ── Toggle Password ── */
   .pwd-wrap { position:relative; }
@@ -290,6 +295,8 @@ tr:hover td{background:rgba(44,181,176,0.03);}
 </div>
 
 <!-- ══ SIDEBAR ══ -->
+<button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-top">
@@ -326,6 +333,9 @@ tr:hover td{background:rgba(44,181,176,0.03);}
     <div class="nav-section">Configuration</div>
     <button class="nav-item" onclick="switchPage('parametres')" id="nav-parametres">
       <span class="nav-icon">⚙️</span> Paramètres
+    </button>
+    <button class="nav-item" onclick="switchPage('cout')" id="nav-cout">
+      <span class="nav-icon">🧮</span> Coût de revient
     </button>
   </div>
 
@@ -553,8 +563,68 @@ tr:hover td{background:rgba(44,181,176,0.03);}
     </div>
   </div>
 
-  <!-- PAGE: HISTORIQUE -->
-  <div class="page" id="page-historique">
+  <!-- PAGE: COÛT DE REVIENT -->
+  <div class="page" id="page-cout">
+    <div style="max-width:1100px;">
+      <div class="settings-info" style="margin-bottom:16px;padding:14px;background:rgba(44,181,176,0.06);border-radius:10px;border:1px solid rgba(44,181,176,0.15);">
+        🧮 Cet outil calcule ton <strong>coût de revient réel au kilomètre</strong> quand c'est toi (ou ton chauffeur) qui roule.
+        Il te dit à partir de combien de km/mois un véhicule en propre devient rentable face à Ecotime.
+        Les coûts fixes se diluent sur le kilométrage : plus tu roules, plus ton coût/km baisse.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="cout-grid">
+        <!-- COLONNE SAISIE -->
+        <div class="settings-card">
+          <div class="settings-card-title">📥 Tes hypothèses</div>
+
+          <div class="sf">
+            <label>Type de véhicule (référence)</label>
+            <select id="crk-veh" onchange="crkPreset()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;">
+              <option value="2">6m³ (fourgonnette / Break)</option>
+              <option value="12" selected>12m³ (Fourgon)</option>
+              <option value="20">20m³ (Grand Volume)</option>
+            </select>
+          </div>
+
+          <div class="settings-card-title" style="margin-top:18px;font-size:0.9rem;">💰 Coûts FIXES (mensuels)</div>
+          <div class="settings-info">Payés que le véhicule roule ou non.</div>
+          <div class="sf"><label>Salaire chauffeur BRUT (€/mois)</label><input type="number" id="crk-salaire" value="2200" min="0"></div>
+          <div class="sf"><label>Charges + remplaçant congés (%)</label><input type="number" id="crk-charges" value="55" min="0" step="1"></div>
+          <div class="sf"><label>Véhicule : leasing tout compris (€/mois)</label><input type="number" id="crk-vehicule" value="800" min="0"></div>
+          <div class="sf"><label>Assurance si non incluse (€/mois)</label><input type="number" id="crk-assurance" value="0" min="0"></div>
+          <div class="sf"><label>Pneus (€/mois — 400€/an ÷ 12)</label><input type="number" id="crk-autresfixes" value="33" min="0"></div>
+
+          <div class="settings-card-title" style="margin-top:18px;font-size:0.9rem;">⛽ Coûts VARIABLES (au km)</div>
+          <div class="settings-info">Proportionnels aux kilomètres parcourus.</div>
+          <div class="sf"><label>Consommation carburant (L/100km)</label><input type="number" id="crk-conso" value="8" min="0" step="0.5"></div>
+          <div class="sf"><label>Prix du carburant (€/L)</label><input type="number" id="crk-prixcarb" value="2.10" min="0" step="0.01"></div>
+          <div class="sf"><label>Entretien hors pneus (€/km)</label><input type="number" id="crk-entretien" value="0.05" min="0" step="0.01"></div>
+
+          <div class="settings-card-title" style="margin-top:18px;font-size:0.9rem;">⏱ Temps de travail</div>
+          <div class="settings-info">En ville, c'est le TEMPS qui limite, pas les km.</div>
+          <div class="sf"><label>Heures productives par jour</label><input type="number" id="crk-hjour" value="7" min="1" step="0.5"></div>
+          <div class="sf"><label>Jours travaillés par mois</label><input type="number" id="crk-jmois" value="21" min="1"></div>
+          <div class="sf"><label>Durée moyenne d'une course, porte à porte (h)</label><input type="number" id="crk-duree" value="1.5" min="0.25" step="0.25"></div>
+
+          <div class="settings-card-title" style="margin-top:18px;font-size:0.9rem;">📊 Activité &amp; prix</div>
+          <div class="sf"><label>Distance moyenne d'une course (km)</label><input type="number" id="crk-distmoy" value="12" min="1"></div>
+          <div class="sf"><label>Prix PLANCHER d'une course (€ HT) — fourchette basse</label><input type="number" id="crk-pv" value="70" min="0"></div>
+          <div class="sf"><label>Courses visées par jour</label><input type="number" id="crk-cjour" value="4" min="1" step="1"></div>
+          <div class="sf"><label>Coût Ecotime d'une course équivalente (€ HT)</label><input type="number" id="crk-ecotime" value="77" min="0"></div>
+
+          <button class="btn-save-settings" onclick="calcCRK()" style="margin-top:8px;">🧮 Calculer mon coût de revient</button>
+        </div>
+
+        <!-- COLONNE RÉSULTATS -->
+        <div class="settings-card" style="align-self:flex-start;">
+          <div class="settings-card-title">📤 Ton coût de revient</div>
+          <div id="crk-results" style="font-size:0.9rem;">
+            <div style="color:var(--muted);padding:20px;text-align:center;">Remplis tes hypothèses et clique sur « Calculer ».</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
     <div class="table-wrap">
       <div class="table-filters">
         <input class="filter-input" id="filter-hist" placeholder="🔍 Référence, adresse…" oninput="filterHistory()">
@@ -606,8 +676,17 @@ async function doLogin() {
   document.getElementById('page-login').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
   localStorage.setItem('ud_admin_logged', '1');
+  requestAdminNotifPermission();
   await loadAll();
   subscribeRealtime();
+}
+
+function requestAdminNotifPermission() {
+  try {
+    if('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  } catch(e) {}
 }
 
 function doLogout() {
@@ -618,7 +697,7 @@ function doLogout() {
 // ════════════════════════════════════════
 // NAVIGATION
 // ════════════════════════════════════════
-const pageTitles = {dashboard:'Tableau de bord',courses:'Courses',chauffeurs:'Chauffeurs',stats:'Statistiques',historique:'Historique',gps:'Suivi GPS',parametres:'Paramètres'};
+const pageTitles = {dashboard:'Tableau de bord',courses:'Courses',chauffeurs:'Chauffeurs',stats:'Statistiques',historique:'Historique',gps:'Suivi GPS',parametres:'Paramètres',cout:'Coût de revient kilométrique'};
 
 function switchPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -626,7 +705,160 @@ function switchPage(name) {
   document.getElementById('page-'+name).classList.add('active');
   document.getElementById('nav-'+name)?.classList.add('active');
   document.getElementById('topbar-title').textContent = pageTitles[name] || name;
+  closeSidebar();
 }
+
+function toggleSidebar() {
+  document.querySelector('.sidebar')?.classList.toggle('open');
+  document.getElementById('sidebar-overlay')?.classList.toggle('open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.getElementById('sidebar-overlay')?.classList.remove('open');
+}
+window.toggleSidebar = toggleSidebar;
+window.closeSidebar = closeSidebar;
+
+// ════════════════════════════════════════
+// CALCULATEUR COÛT DE REVIENT KILOMÉTRIQUE
+// ════════════════════════════════════════
+function crkPreset() {
+  const v = document.getElementById('crk-veh').value;
+  // Préréglages réels (leasing tout compris, conso, coût Ecotime zone B)
+  const presets = {
+    '2':  { vehicule:525, assurance:0, conso:8,  ecotime:56, entretien:0.05, pneus:33, pv:49, duree:1.1, dist:12, cjour:5 },
+    '12': { vehicule:800, assurance:0, conso:8,  ecotime:77, entretien:0.05, pneus:33, pv:70, duree:1.1, dist:12, cjour:4 },
+    '20': { vehicule:1500, assurance:0, conso:13, ecotime:108, entretien:0.06, pneus:33, pv:98, duree:1.3, dist:12, cjour:4 }
+  };
+  const p = presets[v];
+  if(!p) return;
+  document.getElementById('crk-vehicule').value = p.vehicule;
+  document.getElementById('crk-assurance').value = p.assurance;
+  document.getElementById('crk-conso').value = p.conso;
+  document.getElementById('crk-ecotime').value = p.ecotime;
+  document.getElementById('crk-entretien').value = p.entretien;
+  if(p.pv) document.getElementById('crk-pv').value = p.pv;
+  if(p.duree) document.getElementById('crk-duree').value = p.duree;
+  if(p.dist) document.getElementById('crk-distmoy').value = p.dist;
+  if(p.cjour) document.getElementById('crk-cjour').value = p.cjour;
+}
+
+function calcCRK() {
+  const g = id => parseFloat(document.getElementById(id).value) || 0;
+  const salaire=g('crk-salaire'), chargesPct=g('crk-charges');
+  const vehicule=g('crk-vehicule'), assurance=g('crk-assurance'), pneus=g('crk-autresfixes');
+  const conso=g('crk-conso'), prixCarb=g('crk-prixcarb'), entretien=g('crk-entretien');
+  const hJour=g('crk-hjour'), jMois=g('crk-jmois'), duree=g('crk-duree');
+  const distMoy=g('crk-distmoy'), pv=g('crk-pv'), ecotime=g('crk-ecotime'), cJour=g('crk-cjour')||4;
+
+  if(duree<=0 || hJour<=0 || jMois<=0 || distMoy<=0) {
+    document.getElementById('crk-results').innerHTML='<div style="color:#e05;padding:20px;">⚠️ Vérifie les heures, jours et durée de course.</div>';
+    return;
+  }
+
+  // --- Coûts ---
+  const coutMO = salaire*(1+chargesPct/100);
+  const fixesVeh = vehicule + assurance + pneus;
+  const totalFixes = coutMO + fixesVeh;
+  const hMoisLegal = 151.67;
+  const coutMOh = coutMO/hMoisLegal;
+  const coutVehH = fixesVeh/hMoisLegal;
+  const coutHoraire = coutMOh + coutVehH;
+  const carbKm = (conso/100)*prixCarb;
+  const variableKm = carbKm + entretien;
+
+  // --- Capacité (contrainte TEMPS) ---
+  const hProd = hJour*jMois;
+  const capMax = Math.floor(hProd/duree);
+  const kmMaxMois = capMax*distMoy;
+  const vitesseComm = distMoy/duree;
+
+  // --- Coût par course ---
+  const coutCourse = coutHoraire*duree + variableKm*distMoy;
+  const contrib = pv - variableKm*distMoy;
+  const seuilCourses = contrib>0 ? totalFixes/contrib : null;
+  const seuilCA = seuilCourses ? seuilCourses*pv : null;
+  const tauxOccup = seuilCourses ? (seuilCourses/capMax*100) : null;
+  const caMax = capMax*pv;
+  const margeMax = caMax - totalFixes - capMax*variableKm*distMoy;
+  const crkReel = capMax>0 ? (totalFixes/kmMaxMois + variableKm) : 0;
+
+  const e2=n=>n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const e0=n=>Math.round(n).toLocaleString('fr-FR');
+
+  // --- Pilotage quotidien ---
+  const coutJour = totalFixes/jMois;
+  const coutVarCourse = variableKm*distMoy;
+  const caJour = pv*cJour;
+  const margeJour = caJour - coutJour - coutVarCourse*cJour;
+  const nbCoursesEquilibre = (pv-coutVarCourse)>0 ? coutJour/(pv-coutVarCourse) : 0;
+
+  const rentable = coutCourse < ecotime;
+  const badge = rentable
+    ? '<span style="background:var(--green-bg);color:var(--green);padding:3px 10px;border-radius:20px;font-weight:700;font-size:0.78rem;">✓ Moins cher qu\'Ecotime</span>'
+    : '<span style="background:#fde8e8;color:#e05;padding:3px 10px;border-radius:20px;font-weight:700;font-size:0.78rem;">Ecotime plus avantageux</span>';
+
+  const alerteOccup = (tauxOccup!==null && tauxOccup>85)
+    ? '<div style="font-size:0.78rem;color:#e05;margin-top:8px;padding:9px;background:#fde8e8;border-radius:8px;">⚠️ Seuil atteint à '+tauxOccup.toFixed(0)+'% d\'occupation : très risqué, le moindre creux te met en perte.</div>'
+    : '';
+
+  document.getElementById('crk-results').innerHTML =
+    '<div style="margin-bottom:14px;">'+badge+'</div>'+
+
+    // --- Pilotage quotidien ---
+    '<div style="background:var(--navy);border-radius:10px;padding:14px;margin-bottom:12px;color:white;">'+
+      '<div style="font-size:0.72rem;opacity:0.75;">Objectif quotidien du chauffeur</div>'+
+      '<div style="font-size:1.7rem;font-weight:800;letter-spacing:-1px;">'+e0(coutJour)+' € <span style="font-size:0.8rem;font-weight:600;opacity:0.8;">à couvrir / jour</span></div>'+
+      '<div style="font-size:0.76rem;margin-top:6px;opacity:0.9;">'+nbCoursesEquilibre.toFixed(1)+' courses au prix plancher ('+e0(pv)+'€) suffisent à l\'équilibre</div>'+
+    '</div>'+
+    crkRow('CA à '+e0(cJour)+' courses/jour', e0(caJour)+' € HT')+
+    crkRow('Marge quotidienne', (margeJour>=0?'+':'')+e0(margeJour)+' €')+
+    crkRow('Marge mensuelle ('+e0(jMois)+' j)', (margeJour*jMois>=0?'+':'')+e0(margeJour*jMois)+' €')+
+    (margeJour<0 ? '<div style="font-size:0.78rem;color:#e05;margin:8px 0;padding:9px;background:#fde8e8;border-radius:8px;">⚠️ À '+e0(cJour)+' courses/jour au prix plancher, tu ne couvres pas le chauffeur.</div>' : '')+
+
+    '<div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:12px;">'+
+      '<div style="font-size:0.75rem;color:var(--muted);">Coût horaire complet (chauffeur + véhicule)</div>'+
+      '<div style="font-size:1.9rem;font-weight:800;color:var(--teal);letter-spacing:-1px;">'+e2(coutHoraire)+' €<span style="font-size:0.85rem;font-weight:600;">/h</span></div>'+
+      '<div style="font-size:0.72rem;color:var(--muted);margin-top:3px;">'+e2(coutMOh)+'€ main d\'œuvre + '+e2(coutVehH)+'€ véhicule</div>'+
+    '</div>'+
+
+    '<div style="background:rgba(44,181,176,0.08);border-radius:10px;padding:14px;margin-bottom:12px;">'+
+      '<div style="font-size:0.75rem;color:var(--muted);">Coût de revient d\'une course ('+distMoy+'km · '+duree+'h)</div>'+
+      '<div style="font-size:1.9rem;font-weight:800;color:var(--navy);letter-spacing:-1px;">'+e2(coutCourse)+' €</div>'+
+      '<div style="font-size:0.72rem;color:var(--muted);margin-top:3px;">temps '+e2(coutHoraire*duree)+'€ + roulage '+e2(variableKm*distMoy)+'€ · Ecotime : '+e0(ecotime)+'€</div>'+
+    '</div>'+
+
+    '<div style="font-size:0.8rem;font-weight:700;color:var(--navy);margin:14px 0 6px;">⏱ Capacité réelle (limitée par le temps)</div>'+
+    crkRow('Heures productives', e0(hProd)+' h/mois')+
+    crkRow('Courses maximum', e0(capMax)+' /mois ('+(capMax/jMois).toFixed(1)+'/jour)')+
+    crkRow('Vitesse commerciale', e2(vitesseComm)+' km/h')+
+    crkRow('Kilométrage plafond', e0(kmMaxMois)+' km/mois')+
+    crkRow('Coût de revient kilométrique', e2(crkReel)+' €/km')+
+
+    '<div style="font-size:0.8rem;font-weight:700;color:var(--navy);margin:14px 0 6px;">💶 Rentabilité en chiffre d\'affaires</div>'+
+    crkRow('Prix de vente / course', e0(pv)+' € HT')+
+    crkRow('Contribution / course', e2(contrib)+' €')+
+    crkRow('Charges fixes à couvrir', e0(totalFixes)+' €/mois')+
+
+    (seuilCourses ?
+      '<div style="background:var(--bg);border-radius:10px;padding:13px;margin-top:10px;">'+
+        '<div style="font-size:0.75rem;color:var(--muted);">Seuil de rentabilité</div>'+
+        '<div style="font-size:1.5rem;font-weight:800;color:var(--teal-dark);">'+e0(seuilCA)+' € de CA HT<span style="font-size:0.8rem;font-weight:600;">/mois</span></div>'+
+        '<div style="font-size:0.75rem;color:var(--navy);margin-top:4px;">= '+seuilCourses.toFixed(1)+' courses/mois · '+(seuilCourses/jMois).toFixed(1)+' courses/jour · <strong>'+tauxOccup.toFixed(0)+'% d\'occupation</strong></div>'+
+      '</div>'+alerteOccup
+      : '<div style="color:#e05;font-size:0.8rem;margin-top:10px;">⚠️ Prix de vente trop bas : il ne couvre même pas le coût variable.</div>')+
+
+    '<div style="background:'+(margeMax>=0?'rgba(44,181,176,0.08)':'#fde8e8')+';border-radius:10px;padding:13px;margin-top:10px;">'+
+      '<div style="font-size:0.75rem;color:var(--muted);">Si le chauffeur tourne à plein ('+e0(capMax)+' courses)</div>'+
+      '<div style="font-size:1.3rem;font-weight:800;color:'+(margeMax>=0?'var(--teal-dark)':'#e05')+';">CA '+e0(caMax)+' € → marge '+(margeMax>=0?'+':'')+e0(margeMax)+' €/mois</div>'+
+    '</div>';
+}
+
+function crkRow(label, val) {
+  return '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.85rem;"><span style="color:var(--muted);">'+label+'</span><span style="color:var(--navy);font-weight:600;">'+val+'</span></div>';
+}
+window.crkPreset = crkPreset;
+window.calcCRK = calcCRK;
 
 // ════════════════════════════════════════
 // DATA LOADING
@@ -747,16 +979,59 @@ async function loadDrivers() {
 // ════════════════════════════════════════
 function subscribeRealtime() {
   realtimeChannel = _sb.channel('admin-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, async () => {
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'courses' }, async (payload) => {
       await loadCourses();
       renderDashboard(); renderCourses(); renderStats(); renderHistory();
-      showToast('🔔 Nouvelle activité sur les courses', 'info');
+      // 🔔 Alerte forte : nouvelle commande
+      alertNewOrder(payload.new);
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'courses' }, async () => {
+      await loadCourses();
+      renderDashboard(); renderCourses(); renderStats(); renderHistory();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'chauffeurs' }, async () => {
       await loadDrivers();
       renderDashboard(); renderDrivers(); renderStats();
     })
     .subscribe();
+}
+
+// ── Alerte sonore + notification navigateur pour nouvelle commande ──
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [880, 1175, 1568]; // mélodie courte montante
+    notes.forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      o.connect(g); g.connect(ctx.destination);
+      const t = ctx.currentTime + i*0.18;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.4, t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.16);
+      o.start(t); o.stop(t+0.18);
+    });
+  } catch(e) { console.warn('beep:', e); }
+}
+
+function alertNewOrder(course) {
+  playBeep();
+  showToast('🔔 Nouvelle commande reçue !', 'success');
+  // Notification navigateur (visible même onglet en arrière-plan)
+  try {
+    if('Notification' in window && Notification.permission === 'granted') {
+      const dep = course?.adresse_depart || '';
+      const arr = course?.adresse_arrivee || '';
+      const prix = course?.prix_total ? (course.prix_total + '€') : '';
+      const n = new Notification('🚚 UrbanDrop — Nouvelle commande', {
+        body: (dep ? dep.substring(0,40) : '') + (arr ? ' → ' + arr.substring(0,40) : '') + (prix ? '\n💰 ' + prix : ''),
+        tag: 'urbandrop-order-' + (course?.id || Date.now()),
+        requireInteraction: true
+      });
+      n.onclick = function() { window.focus(); this.close(); };
+    }
+  } catch(e) { console.warn('notif:', e); }
 }
 
 // ════════════════════════════════════════
@@ -1332,6 +1607,7 @@ const _origRenderCourses = renderCourses;
 if(localStorage.getItem('ud_admin_logged')) {
   document.getElementById('page-login').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
+  requestAdminNotifPermission();
   loadAll().then(subscribeRealtime);
 }
 </script>
